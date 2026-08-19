@@ -165,7 +165,7 @@ class AdaptivePopupMenuButton<T> {
     if (PlatformInfo.isIOS26OrHigher()) {
       return CoveredRouteBuilder(
         builder: (context, covered) => covered
-            ? _iosLegacyIcon<T>(icon: icon, items: items, onSelected: onSelected, size: size)
+            ? _iosLegacyIcon<T>(icon: icon, items: items, onSelected: onSelected, size: size, tint: tint)
             : IOS26PopupMenuButton<T>.icon(
                 buttonIcon: icon is String ? icon : 'ellipsis.circle',
                 items: items,
@@ -197,6 +197,7 @@ class AdaptivePopupMenuButton<T> {
     required List<AdaptivePopupMenuEntry> items,
     required void Function(int index, AdaptivePopupMenuItem<T> entry) onSelected,
     required double size,
+    Color? tint,
   }) {
     return Builder(
       builder: (context) => SizedBox(
@@ -205,10 +206,39 @@ class AdaptivePopupMenuButton<T> {
         child: CupertinoButton(
           padding: const EdgeInsets.all(4),
           onPressed: () => _showMenu<T>(context, null, items, onSelected),
-          child: Icon(icon is IconData ? icon : CupertinoIcons.ellipsis),
+          child: Icon(
+            icon is IconData ? icon : _cupertinoIconForSfSymbol(icon is String ? icon : 'ellipsis.circle'),
+            size: size * 0.55,
+            color: tint,
+          ),
         ),
       ),
     );
+  }
+
+  /// Best-effort mapping of common SF Symbol names to Cupertino icons so the
+  /// drawn fallback matches the native glyph.
+  static IconData _cupertinoIconForSfSymbol(String name) {
+    switch (name) {
+      case 'ellipsis':
+        return CupertinoIcons.ellipsis;
+      case 'ellipsis.circle':
+        return CupertinoIcons.ellipsis_circle;
+      case 'globe':
+        return CupertinoIcons.globe;
+      case 'plus':
+        return CupertinoIcons.add;
+      case 'plus.circle':
+        return CupertinoIcons.add_circled;
+      case 'gear':
+        return CupertinoIcons.gear;
+      case 'trash':
+        return CupertinoIcons.trash;
+      case 'square.and.arrow.up':
+        return CupertinoIcons.share;
+      default:
+        return CupertinoIcons.ellipsis_circle;
+    }
   }
 
   static Widget _buildActionSheetContent<T>(AdaptivePopupMenuItem<T> item) {

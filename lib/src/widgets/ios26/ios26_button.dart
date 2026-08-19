@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import '../../style/sf_symbol.dart';
+import '../covered_route_builder.dart';
 
 /// iOS 26 native button styles (Liquid Glass design)
 enum IOS26ButtonStyle {
@@ -384,18 +385,12 @@ class _IOS26ButtonState extends State<IOS26Button> {
       // While this route is covered by another route (sheet presentation,
       // push), the platform view cannot follow the route's transform and
       // renders scuffed grey quads. Swap to the drawn fallback for the
-      // duration — the page is scaled/dimmed then, so the swap is invisible.
-      final secondaryAnimation = ModalRoute.of(context)?.secondaryAnimation;
-      if (secondaryAnimation != null) {
-        final native = buttonWidget;
-        return AnimatedBuilder(
-          animation: secondaryAnimation,
-          builder: (context, _) =>
-              secondaryAnimation.isDismissed ? native : _buildFallbackButton(),
-        );
-      }
-
-      return buttonWidget;
+      // duration; CoveredRouteBuilder keeps the fallback painted briefly
+      // after uncovering so the platform view can mount without a flicker.
+      final native = buttonWidget;
+      return CoveredRouteBuilder(
+        builder: (context, covered) => covered ? _buildFallbackButton() : native,
+      );
     }
 
     // Fallback to CupertinoButton on other platforms
@@ -415,11 +410,19 @@ class _IOS26ButtonState extends State<IOS26Button> {
 
     switch (widget.style) {
       case IOS26ButtonStyle.filled:
-        return CupertinoButton.filled(
-          onPressed: widget.enabled ? widget.onPressed : null,
-          padding:
-              widget.padding ?? const EdgeInsets.symmetric(horizontal: 16.0),
-          child: buttonChild,
+        // Match the native geometry: same fill color, corner radius, and
+        // height, so the covered-route swap is imperceptible.
+        return SizedBox(
+          height: widget.minSize?.height ?? _height,
+          child: CupertinoButton(
+            onPressed: widget.enabled ? widget.onPressed : null,
+            color: buttonColor,
+            borderRadius: widget.borderRadius ?? BorderRadius.circular(14.0),
+            minSize: widget.minSize?.height ?? _height,
+            padding:
+                widget.padding ?? const EdgeInsets.symmetric(horizontal: 16.0),
+            child: buttonChild,
+          ),
         );
 
       case IOS26ButtonStyle.plain:
