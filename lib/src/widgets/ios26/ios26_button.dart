@@ -426,10 +426,14 @@ class _IOS26ButtonState extends State<IOS26Button> {
         );
 
       case IOS26ButtonStyle.plain:
-        return CupertinoButton(
+        final plainButton = CupertinoButton(
           onPressed: widget.enabled ? widget.onPressed : null,
           padding:
               widget.padding ?? const EdgeInsets.symmetric(horizontal: 16.0),
+          // Child mode sizes the native button to child + padding; kill the
+          // 44pt default minSize so the fallback occupies the same width and
+          // the covered-route swap doesn't shift surrounding layout.
+          minSize: widget.isChildMode ? 0.0 : null,
           child: widget.isChildMode
               ? widget.child!
               : Text(
@@ -437,6 +441,9 @@ class _IOS26ButtonState extends State<IOS26Button> {
                   style: TextStyle(color: widget.textColor ?? buttonColor),
                 ),
         );
+        return widget.isChildMode
+            ? SizedBox(height: _height, child: plainButton)
+            : plainButton;
 
       default:
         return CupertinoButton(

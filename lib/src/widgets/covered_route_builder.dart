@@ -25,7 +25,13 @@ class CoveredRouteBuilder extends StatefulWidget {
 }
 
 class _CoveredRouteBuilderState extends State<CoveredRouteBuilder> {
-  static const _uncoverGrace = Duration(milliseconds: 220);
+  /// Set to true to log cover/uncover transitions and grace expiry, to verify
+  /// the swap mechanism when the fallback is visually indistinguishable.
+  static bool debugLogSwaps = false;
+
+  // Generous on purpose: the fallback is pixel-faithful, so lingering is
+  // invisible, and the platform view gets ample time to mount and render.
+  static const _uncoverGrace = Duration(milliseconds: 2000);
 
   Animation<double>? _animation;
   bool _covered = false;
@@ -38,8 +44,14 @@ class _CoveredRouteBuilderState extends State<CoveredRouteBuilder> {
     final animation = ModalRoute.of(context)?.secondaryAnimation;
     if (!identical(animation, _animation)) {
       _animation?.removeListener(_update);
+      _animation?.removeStatusListener(_updateStatus);
       _animation = animation;
       _animation?.addListener(_update);
+      // The final reverse→dismissed transition at the end of a pop is a
+      // status-only notification (the last value tick still reports
+      // AnimationStatus.reverse), so a value listener alone leaves the
+      // fallback stuck on screen after uncovering.
+      _animation?.addStatusListener(_updateStatus);
       _covered = animation != null && !animation.isDismissed;
     }
   }
@@ -47,13 +59,19 @@ class _CoveredRouteBuilderState extends State<CoveredRouteBuilder> {
   @override
   void dispose() {
     _animation?.removeListener(_update);
+    _animation?.removeStatusListener(_updateStatus);
     _graceTimer?.cancel();
     super.dispose();
   }
 
+  void _updateStatus(AnimationStatus _) => _update();
+
   void _update() {
     final nowCovered = _animation != null && !_animation!.isDismissed;
     if (nowCovered == _covered) return;
+    if (debugLogSwaps) {
+      debugPrint('[covered-route] covered=$nowCovered status=${_animation?.status}');
+    }
 
     _graceTimer?.cancel();
     if (!nowCovered) {
@@ -61,6 +79,7 @@ class _CoveredRouteBuilderState extends State<CoveredRouteBuilder> {
       // platform view until it has rendered.
       _graceOverlay = true;
       _graceTimer = Timer(_uncoverGrace, () {
+        if (debugLogSwaps) debugPrint('[covered-route] grace over');
         if (mounted) setState(() => _graceOverlay = false);
       });
     } else {
