@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../platform/platform_info.dart';
+import 'covered_route_builder.dart';
 import 'ios26/ios26_popup_menu_button.dart';
 
 export 'ios26/ios26_popup_menu_button.dart'
@@ -26,16 +27,22 @@ class AdaptivePopupMenuButton<T> {
     bool shrinkWrap = false,
     PopupButtonStyle buttonStyle = PopupButtonStyle.plain,
   }) {
-    // iOS 26+ - Use native iOS 26 popup menu button
+    // iOS 26+ - Use native iOS 26 popup menu button. While the route is
+    // covered (sheet/push) the platform view cannot follow the route
+    // transform — render the drawn iOS fallback for the duration.
     if (PlatformInfo.isIOS26OrHigher()) {
-      return IOS26PopupMenuButton<T>(
-        buttonLabel: label,
-        items: items,
-        onSelected: onSelected,
-        tint: tint,
-        height: height,
-        shrinkWrap: shrinkWrap,
-        buttonStyle: buttonStyle,
+      return CoveredRouteBuilder(
+        builder: (context, covered) => covered
+            ? _iosLegacyButton<T>(label: label, items: items, onSelected: onSelected, height: height)
+            : IOS26PopupMenuButton<T>(
+                buttonLabel: label,
+                items: items,
+                onSelected: onSelected,
+                tint: tint,
+                height: height,
+                shrinkWrap: shrinkWrap,
+                buttonStyle: buttonStyle,
+              ),
       );
     }
 
@@ -51,6 +58,15 @@ class AdaptivePopupMenuButton<T> {
     }
 
     // iOS <26 (iOS 18 and below) - Use CupertinoButton with action sheet (iOS fallback)
+    return _iosLegacyButton<T>(label: label, items: items, onSelected: onSelected, height: height);
+  }
+
+  static Widget _iosLegacyButton<T>({
+    required String label,
+    required List<AdaptivePopupMenuEntry> items,
+    required void Function(int index, AdaptivePopupMenuItem<T> entry) onSelected,
+    required double height,
+  }) {
     return Builder(
       builder: (context) => SizedBox(
         height: height,
@@ -80,16 +96,21 @@ class AdaptivePopupMenuButton<T> {
       'onTap is only used with triggerOnLongPress: true (tap fires onTap, '
       'long-press opens the menu).',
     );
-    // iOS 26+ - Use gesture detector with native menu
+    // iOS 26+ - Use gesture detector with native menu (drawn fallback while
+    // the route is covered — platform views can't follow route transforms).
     if (PlatformInfo.isIOS26OrHigher()) {
-      return IOS26PopupMenuButton<T>.widget(
-        items: items,
-        onSelected: onSelected,
-        tint: tint,
-        buttonStyle: buttonStyle,
-        triggerOnLongPress: triggerOnLongPress,
-        onTap: onTap,
-        child: child,
+      return CoveredRouteBuilder(
+        builder: (context, covered) => covered
+            ? _iosLegacyWidget<T>(items: items, onSelected: onSelected, triggerOnLongPress: triggerOnLongPress, onTap: onTap, child: child)
+            : IOS26PopupMenuButton<T>.widget(
+                items: items,
+                onSelected: onSelected,
+                tint: tint,
+                buttonStyle: buttonStyle,
+                triggerOnLongPress: triggerOnLongPress,
+                onTap: onTap,
+                child: child,
+              ),
       );
     }
 
@@ -104,6 +125,16 @@ class AdaptivePopupMenuButton<T> {
     }
 
     // iOS <26 (iOS 18 and below) - Use GestureDetector with action sheet
+    return _iosLegacyWidget<T>(items: items, onSelected: onSelected, triggerOnLongPress: triggerOnLongPress, onTap: onTap, child: child);
+  }
+
+  static Widget _iosLegacyWidget<T>({
+    required List<AdaptivePopupMenuEntry> items,
+    required void Function(int index, AdaptivePopupMenuItem<T> entry) onSelected,
+    required bool triggerOnLongPress,
+    VoidCallback? onTap,
+    required Widget child,
+  }) {
     return Builder(
       builder: (context) => GestureDetector(
         onTap: triggerOnLongPress ? onTap : () => _showMenu<T>(context, null, items, onSelected),
@@ -128,15 +159,21 @@ class AdaptivePopupMenuButton<T> {
     double size = 44.0,
     PopupButtonStyle buttonStyle = PopupButtonStyle.glass,
   }) {
-    // iOS 26+ - Use native iOS 26 popup menu button (expects String - SF Symbol)
+    // iOS 26+ - Use native iOS 26 popup menu button (expects String - SF
+    // Symbol). Drawn fallback while the route is covered — platform views
+    // can't follow route transforms.
     if (PlatformInfo.isIOS26OrHigher()) {
-      return IOS26PopupMenuButton<T>.icon(
-        buttonIcon: icon is String ? icon : 'ellipsis.circle',
-        items: items,
-        onSelected: onSelected,
-        tint: tint,
-        size: size,
-        buttonStyle: buttonStyle,
+      return CoveredRouteBuilder(
+        builder: (context, covered) => covered
+            ? _iosLegacyIcon<T>(icon: icon, items: items, onSelected: onSelected, size: size)
+            : IOS26PopupMenuButton<T>.icon(
+                buttonIcon: icon is String ? icon : 'ellipsis.circle',
+                items: items,
+                onSelected: onSelected,
+                tint: tint,
+                size: size,
+                buttonStyle: buttonStyle,
+              ),
       );
     }
 
@@ -152,6 +189,15 @@ class AdaptivePopupMenuButton<T> {
     }
 
     // iOS <26 (iOS 18 and below) - Use icon button with action sheet (iOS fallback)
+    return _iosLegacyIcon<T>(icon: icon, items: items, onSelected: onSelected, size: size);
+  }
+
+  static Widget _iosLegacyIcon<T>({
+    required dynamic icon,
+    required List<AdaptivePopupMenuEntry> items,
+    required void Function(int index, AdaptivePopupMenuItem<T> entry) onSelected,
+    required double size,
+  }) {
     return Builder(
       builder: (context) => SizedBox(
         width: size,

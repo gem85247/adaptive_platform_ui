@@ -62,6 +62,7 @@ export 'src/widgets/adaptive_text_field.dart';
 export 'src/widgets/adaptive_text_form_field.dart';
 export 'src/widgets/adaptive_search_field.dart';
 export 'src/widgets/adaptive_sheet.dart';
+export 'src/widgets/covered_route_builder.dart';
 export 'src/widgets/adaptive_tab_view.dart';
 export 'src/widgets/adaptive_floating_action_button.dart';
 export 'src/widgets/adaptive_form_section.dart';
