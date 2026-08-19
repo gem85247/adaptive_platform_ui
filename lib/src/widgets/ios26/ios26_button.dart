@@ -381,6 +381,20 @@ class _IOS26ButtonState extends State<IOS26Button> {
               );
       }
 
+      // While this route is covered by another route (sheet presentation,
+      // push), the platform view cannot follow the route's transform and
+      // renders scuffed grey quads. Swap to the drawn fallback for the
+      // duration — the page is scaled/dimmed then, so the swap is invisible.
+      final secondaryAnimation = ModalRoute.of(context)?.secondaryAnimation;
+      if (secondaryAnimation != null) {
+        final native = buttonWidget;
+        return AnimatedBuilder(
+          animation: secondaryAnimation,
+          builder: (context, _) =>
+              secondaryAnimation.isDismissed ? native : _buildFallbackButton(),
+        );
+      }
+
       return buttonWidget;
     }
 

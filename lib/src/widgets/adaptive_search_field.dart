@@ -47,6 +47,8 @@ class AdaptiveSearchField extends StatelessWidget {
         textColor: style?.color,
         placeholderColor: placeholderStyle?.color,
         backgroundColor: backgroundColor,
+        // A custom background paints the raw view rect — keep it a capsule.
+        cornerRadius: backgroundColor != null ? height / 2 : null,
         textInputAction: TextInputAction.search,
         autofocus: autofocus,
         height: height,
