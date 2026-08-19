@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../platform/platform_info.dart';
+import 'ios26/ios26_text_field.dart';
 
 /// An adaptive text field that renders platform-specific styles
 ///
@@ -130,13 +131,52 @@ class AdaptiveTextField extends StatelessWidget {
   /// [CupertinoColors.tertiarySystemBackground].
   final BoxDecoration? cupertinoDecoration;
 
+  /// True when this configuration can be represented by the native
+  /// UITextField: single-line, no inline Flutter widgets, no custom
+  /// formatters, and no tap/read-only interception.
+  bool get _nativeRepresentable =>
+      (maxLines ?? 1) == 1 &&
+      prefix == null &&
+      suffix == null &&
+      prefixIcon == null &&
+      suffixIcon == null &&
+      inputFormatters == null &&
+      maxLength == null &&
+      onTap == null &&
+      !readOnly;
+
   @override
   Widget build(BuildContext context) {
     if (PlatformInfo.isIOS) {
+      if (PlatformInfo.isIOS26OrHigher() && _nativeRepresentable) {
+        return _buildNativeTextField(context);
+      }
       return _buildCupertinoTextField(context);
     }
 
     return _buildMaterialTextField(context);
+  }
+
+  Widget _buildNativeTextField(BuildContext context) {
+    final BorderRadius? radius = cupertinoDecoration?.borderRadius?.resolve(Directionality.of(context));
+    return IOS26TextField(
+      controller: controller,
+      focusNode: focusNode,
+      placeholder: placeholder,
+      fontSize: style?.fontSize ?? 17.0,
+      textColor: style?.color,
+      backgroundColor: cupertinoDecoration?.color,
+      cornerRadius: radius?.topLeft.x,
+      keyboardType: keyboardType,
+      textInputAction: textInputAction,
+      autocorrect: autocorrect,
+      obscureText: obscureText,
+      enabled: enabled,
+      autofocus: autofocus,
+      height: 38.0,
+      onChanged: onChanged,
+      onSubmitted: onSubmitted,
+    );
   }
 
   Widget _buildCupertinoTextField(BuildContext context) {

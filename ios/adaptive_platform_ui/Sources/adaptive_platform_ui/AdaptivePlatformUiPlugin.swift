@@ -18,6 +18,13 @@ public class AdaptivePlatformUiPlugin: NSObject, FlutterPlugin {
             withId: "adaptive_platform_ui/ios26_button"
         )
 
+        // Register native text field platform view factory
+        let ios26TextFieldFactory = iOS26TextFieldViewFactory(messenger: registrar.messenger())
+        registrar.register(
+            ios26TextFieldFactory,
+            withId: "adaptive_platform_ui/ios26_text_field"
+        )
+
         // Register iOS 26 Switch platform view factory
         let ios26SwitchFactory = iOS26SwitchViewFactory(messenger: registrar.messenger())
         registrar.register(
