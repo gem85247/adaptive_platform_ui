@@ -179,8 +179,13 @@ class _IOS26TextFieldState extends State<IOS26TextField> {
 
     return SizedBox(
       height: widget.height,
-      child: UiKitView(
-        viewType: 'adaptive_platform_ui/ios26_text_field',
+      // RepaintBoundary + clip keep the platform view's compositing overlay
+      // from bleeding paint into neighbouring widgets.
+      child: RepaintBoundary(
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(widget.cornerRadius ?? (widget.style == IOS26TextFieldStyle.search ? widget.height / 2 : 0.0)),
+          child: UiKitView(
+            viewType: 'adaptive_platform_ui/ios26_text_field',
         creationParams: {
           'id': _id,
           'text': widget.controller?.text ?? '',
@@ -199,7 +204,9 @@ class _IOS26TextFieldState extends State<IOS26TextField> {
           'isDark': brightness == Brightness.dark,
           'autofocus': widget.autofocus,
         },
-        creationParamsCodec: const StandardMessageCodec(),
+            creationParamsCodec: const StandardMessageCodec(),
+          ),
+        ),
       ),
     );
   }

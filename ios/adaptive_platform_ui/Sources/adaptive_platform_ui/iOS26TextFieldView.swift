@@ -65,6 +65,9 @@ class iOS26TextFieldView: NSObject, FlutterPlatformView, UITextFieldDelegate {
         binaryMessenger messenger: FlutterBinaryMessenger
     ) {
         _view = UIView(frame: frame)
+        // Contain the field's glass/shadow layers: without clipping they can
+        // bleed outside the Flutter slot and leave artifacts over siblings.
+        _view.clipsToBounds = true
 
         if let config = args as? [String: Any] {
             fieldId = config["id"] as? Int ?? 0
@@ -145,6 +148,14 @@ class iOS26TextFieldView: NSObject, FlutterPlatformView, UITextFieldDelegate {
 
         updatePlaceholder()
 
+        // Flat appearance: no drop shadow on the field or the system
+        // background subviews (iOS 26 renders search fields with an
+        // elevated glass shadow by default).
+        textField.layer.shadowOpacity = 0
+        DispatchQueue.main.async { [weak self] in
+            self?.removeSubviewShadows()
+        }
+
         _view.addSubview(textField)
         NSLayoutConstraint.activate([
             textField.leadingAnchor.constraint(equalTo: _view.leadingAnchor),
@@ -158,6 +169,15 @@ class iOS26TextFieldView: NSObject, FlutterPlatformView, UITextFieldDelegate {
                 self?.textField.becomeFirstResponder()
             }
         }
+    }
+
+    private func removeSubviewShadows() {
+        func strip(_ view: UIView) {
+            view.layer.shadowOpacity = 0
+            view.layer.shadowColor = nil
+            for sub in view.subviews { strip(sub) }
+        }
+        strip(textField)
     }
 
     private func updatePlaceholder() {
