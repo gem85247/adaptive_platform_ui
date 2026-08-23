@@ -382,18 +382,12 @@ class _IOS26PopupMenuButtonState<T> extends State<IOS26PopupMenuButton<T>> {
         if (_effectiveTint != null) 'tint': _colorToARGB(_effectiveTint!),
       };
 
-      // Create a unique key based on button label/icon and items to force recreation on change
-      final itemsKey = widget.items
-          .map((item) {
-            if (item is AdaptivePopupMenuItem<T>) {
-              return '${item.label}_${item.subtitle}_${item.icon}_${item.enabled}_${item.selected}_${item.value}_${item.imageBytes?.length}';
-            }
-            return 'divider';
-          })
-          .join('_');
-
+      // Keep the UiKitView key stable. Menu/button content is updated via the
+      // method channel in didUpdateWidget (_updateMenuItems / _updateButtonContent).
+      // Baking items into the key remounts the native view and races dispose →
+      // PlatformException(recreating_view) on iOS.
       final viewKey = ValueKey(
-        '${widget.buttonLabel}_${widget.buttonIcon}_${widget.child?.runtimeType}_$itemsKey',
+        'popup_${widget.isIconButton}_${widget.buttonLabel}_${widget.buttonIcon}_${widget.child?.runtimeType}_${widget.triggerOnLongPress}',
       );
 
       final platformView = UiKitView(

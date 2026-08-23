@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../platform/platform_info.dart';
@@ -141,12 +143,21 @@ class _IOSTooltip extends StatefulWidget {
 class _IOSTooltipState extends State<_IOSTooltip> {
   final GlobalKey _key = GlobalKey();
   OverlayEntry? _overlayEntry;
+  Timer? _hideTimer;
   bool _isVisible = false;
 
   @override
   void dispose() {
     _removeTooltip();
     super.dispose();
+  }
+
+  void _toggleTooltip() {
+    if (_isVisible) {
+      _removeTooltip();
+    } else {
+      _showTooltip();
+    }
   }
 
   void _showTooltip() {
@@ -160,19 +171,32 @@ class _IOSTooltipState extends State<_IOSTooltip> {
     final size = renderBox.size;
 
     _overlayEntry = OverlayEntry(
-      builder: (context) => _TooltipOverlay(
-        message: widget.message,
-        position: position,
-        size: size,
-        preferBelow: widget.preferBelow,
-        verticalOffset: widget.verticalOffset ?? 24,
-        padding:
-            widget.padding ??
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        margin: widget.margin ?? const EdgeInsets.symmetric(horizontal: 16),
-        height: widget.height,
-        decoration: widget.decoration,
-        textStyle: widget.textStyle,
+      builder: (context) => Stack(
+        children: [
+          // Full-screen barrier: tap anywhere outside closes the tooltip.
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _removeTooltip,
+              child: const SizedBox.expand(),
+            ),
+          ),
+          _TooltipOverlay(
+            message: widget.message,
+            position: position,
+            size: size,
+            preferBelow: widget.preferBelow,
+            verticalOffset: widget.verticalOffset ?? 24,
+            padding:
+                widget.padding ??
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            margin: widget.margin ?? const EdgeInsets.symmetric(horizontal: 16),
+            height: widget.height,
+            decoration: widget.decoration,
+            textStyle: widget.textStyle,
+            onTap: _removeTooltip,
+          ),
+        ],
       ),
     );
 
@@ -181,11 +205,14 @@ class _IOSTooltipState extends State<_IOSTooltip> {
 
     // Auto-hide tooltip after duration
     final showDuration = widget.showDuration ?? const Duration(seconds: 2);
-    Future.delayed(showDuration, _removeTooltip);
+    _hideTimer?.cancel();
+    _hideTimer = Timer(showDuration, _removeTooltip);
   }
 
   void _removeTooltip() {
     if (!_isVisible) return;
+    _hideTimer?.cancel();
+    _hideTimer = null;
     _overlayEntry?.remove();
     _overlayEntry = null;
     _isVisible = false;
@@ -195,8 +222,8 @@ class _IOSTooltipState extends State<_IOSTooltip> {
   Widget build(BuildContext context) {
     return GestureDetector(
       key: _key,
-      onLongPress: _showTooltip,
-      onTap: _showTooltip,
+      onLongPress: _toggleTooltip,
+      onTap: _toggleTooltip,
       child: widget.child,
     );
   }
@@ -214,6 +241,7 @@ class _TooltipOverlay extends StatefulWidget {
     required this.height,
     required this.decoration,
     required this.textStyle,
+    required this.onTap,
   });
 
   final String message;
@@ -226,6 +254,7 @@ class _TooltipOverlay extends StatefulWidget {
   final double? height;
   final Decoration? decoration;
   final TextStyle? textStyle;
+  final VoidCallback onTap;
 
   @override
   State<_TooltipOverlay> createState() => _TooltipOverlayState();
@@ -297,16 +326,19 @@ class _TooltipOverlayState extends State<_TooltipOverlay>
         );
       },
       child: Center(
-        child: Container(
-          constraints: BoxConstraints(maxWidth: screenSize.width - 32),
-          margin: widget.margin,
-          height: widget.height,
-          padding: widget.padding,
-          decoration: widget.decoration ?? defaultDecoration,
-          child: Text(
-            widget.message,
-            style: widget.textStyle ?? defaultTextStyle,
-            textAlign: TextAlign.center,
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: Container(
+            constraints: BoxConstraints(maxWidth: screenSize.width - 32),
+            margin: widget.margin,
+            height: widget.height,
+            padding: widget.padding,
+            decoration: widget.decoration ?? defaultDecoration,
+            child: Text(
+              widget.message,
+              style: widget.textStyle ?? defaultTextStyle,
+              textAlign: TextAlign.center,
+            ),
           ),
         ),
       ),
