@@ -65,11 +65,41 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
   TabBarMinimizeBehavior? _lastMinimizeBehavior;
   bool? _lastHidden;
 
+  /// Remount key for hot-restart [PlatformException(recreating_view)].
+  Key _viewKey = UniqueKey();
+  bool _platformViewReady = false;
+  int _remountAttempts = 0;
+  static const int _maxRemountAttempts = 2;
+
   bool get _isDark =>
       MediaQuery.platformBrightnessOf(context) == Brightness.dark;
   bool get _isRtl => Directionality.of(context) == TextDirection.rtl;
   Color? get _effectiveTint =>
       widget.tint ?? CupertinoTheme.of(context).primaryColor;
+
+  @override
+  void initState() {
+    super.initState();
+    _armCreationWatchdog();
+  }
+
+  /// After hot restart, Flutter may try to recreate platform view id 0 while
+  /// the engine still holds it. UiKitView catches that and leaves a blank
+  /// controller — remount once so the next registry id succeeds.
+  void _armCreationWatchdog() {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+      if (!mounted || _platformViewReady) return;
+      if (_remountAttempts >= _maxRemountAttempts) return;
+      _remountAttempts++;
+      setState(() {
+        _channel?.setMethodCallHandler(null);
+        _channel = null;
+        _viewKey = UniqueKey();
+      });
+      _armCreationWatchdog();
+    });
+  }
 
   @override
   void didUpdateWidget(covariant IOS26NativeTabBar oldWidget) {
@@ -214,17 +244,24 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
           'backgroundColor': _colorToARGB(widget.backgroundColor!),
       };
 
-      final platformView = widget.showNativeView
-          ? UiKitView(
-              viewType: 'adaptive_platform_ui/ios26_tab_bar',
-              creationParams: creationParams,
-              creationParamsCodec: const StandardMessageCodec(),
-              onPlatformViewCreated: _onCreated,
-              gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
-                Factory<TapGestureRecognizer>(() => TapGestureRecognizer()),
-              },
-            )
-          : const SizedBox.shrink();
+      // Keep the UiKitView mounted when "hidden" for route coverage. Tearing it
+      // down and recreating races dispose → recreating_view on iOS.
+      final platformView = IgnorePointer(
+        ignoring: !widget.showNativeView,
+        child: Opacity(
+          opacity: widget.showNativeView ? 1.0 : 0.0,
+          child: UiKitView(
+            key: _viewKey,
+            viewType: 'adaptive_platform_ui/ios26_tab_bar',
+            creationParams: creationParams,
+            creationParamsCodec: const StandardMessageCodec(),
+            onPlatformViewCreated: _onCreated,
+            gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
+              Factory<TapGestureRecognizer>(() => TapGestureRecognizer()),
+            },
+          ),
+        ),
+      );
 
       final h = widget.height ?? _intrinsicHeight ?? 50.0;
       return SizedBox(height: h, child: platformView);
@@ -272,6 +309,7 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
   }
 
   void _onCreated(int id) {
+    _platformViewReady = true;
     final ch = MethodChannel('adaptive_platform_ui/ios26_tab_bar_$id');
     _channel = ch;
     ch.setMethodCallHandler(_onMethodCall);

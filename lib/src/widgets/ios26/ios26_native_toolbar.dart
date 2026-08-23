@@ -53,8 +53,41 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
   int? _lastTint;
   List<AdaptiveAppBarAction>? _lastActions;
 
+  /// Remount key for hot-restart [PlatformException(recreating_view)].
+  Key _viewKey = UniqueKey();
+  bool _platformViewReady = false;
+  int _remountAttempts = 0;
+  static const int _maxRemountAttempts = 2;
+
   bool get _isDark =>
       MediaQuery.platformBrightnessOf(context) == Brightness.dark;
+
+  @override
+  void initState() {
+    super.initState();
+    _armCreationWatchdog();
+  }
+
+  void _armCreationWatchdog() {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+      if (!mounted || _platformViewReady) return;
+      if (_remountAttempts >= _maxRemountAttempts) return;
+      _remountAttempts++;
+      setState(() {
+        _channel?.setMethodCallHandler(null);
+        _channel = null;
+        _viewKey = UniqueKey();
+      });
+      _armCreationWatchdog();
+    });
+  }
+
+  @override
+  void dispose() {
+    _channel?.setMethodCallHandler(null);
+    super.dispose();
+  }
 
   int _colorToARGB(Color color) {
     // Resolve CupertinoDynamicColor if needed
@@ -171,14 +204,21 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
       curve: const IOSSpringCurve(),
       child: Stack(
         children: [
-          if (widget.showNativeView)
-            UiKitView(
-              viewType: 'adaptive_platform_ui/ios26_toolbar',
-              creationParams: creationParams,
-              creationParamsCodec: const StandardMessageCodec(),
-              onPlatformViewCreated: _onPlatformViewCreated,
-              hitTestBehavior: PlatformViewHitTestBehavior.translucent,
+          // Keep mounted when hidden — dispose/recreate races recreating_view.
+          IgnorePointer(
+            ignoring: !widget.showNativeView,
+            child: Opacity(
+              opacity: widget.showNativeView ? 1.0 : 0.0,
+              child: UiKitView(
+                key: _viewKey,
+                viewType: 'adaptive_platform_ui/ios26_toolbar',
+                creationParams: creationParams,
+                creationParamsCodec: const StandardMessageCodec(),
+                onPlatformViewCreated: _onPlatformViewCreated,
+                hitTestBehavior: PlatformViewHitTestBehavior.translucent,
+              ),
             ),
+          ),
           if (widget.leading != null)
             Positioned(
               left: 16,
@@ -202,6 +242,7 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
   }
 
   void _onPlatformViewCreated(int id) {
+    _platformViewReady = true;
     _channel = MethodChannel('adaptive_platform_ui/ios26_toolbar_$id');
     _channel!.setMethodCallHandler(_handleMethodCall);
     _lastIsDark = _isDark;
