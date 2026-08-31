@@ -32,11 +32,12 @@ class iOS26ToolbarFactory: NSObject, FlutterPlatformViewFactory {
 class ToolbarContainerView: UIView {
     var gradientLayer: CAGradientLayer?
     var onTraitChange: (() -> Void)?
+    var extendBelow: CGFloat = 30
 
     override func layoutSubviews() {
         super.layoutSubviews()
         // Extend gradient below the container bounds for smooth fade
-        gradientLayer?.frame = CGRect(x: 0, y: 0, width: bounds.width, height: bounds.height + 30)
+        gradientLayer?.frame = CGRect(x: 0, y: 0, width: bounds.width, height: bounds.height + extendBelow)
     }
 
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
@@ -56,6 +57,9 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
 
     private var isDark: Bool = false
     private var perActionTintTags: Set<Int> = []
+    /// Optional fade overrides from Flutter. Nil → package defaults.
+    private var fadeStops: [(location: CGFloat, opacity: CGFloat)]?
+    private var fadeColorMode: String = "auto"
 
     init(
         frame: CGRect,
@@ -80,6 +84,11 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
         // Apply Flutter's brightness override
         if #available(iOS 13.0, *) {
             containerView.overrideUserInterfaceStyle = isDark ? .dark : .light
+        }
+
+        // Fade config before creating the gradient layer so the first paint is correct.
+        if let params = args as? [String: Any] {
+            applyFadeConfig(params["fade"] as? [String: Any])
         }
 
         setupGradient()
@@ -156,17 +165,52 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
     }
 
     private func updateGradientColors() {
-        let isDarkMode = containerView.traitCollection.userInterfaceStyle == .dark
-        let baseColor = isDarkMode ? UIColor.black : UIColor.white
+        let baseColor: UIColor
+        switch fadeColorMode {
+        case "light":
+            baseColor = .white
+        case "dark":
+            baseColor = .black
+        default:
+            let isDarkMode = containerView.traitCollection.userInterfaceStyle == .dark
+            baseColor = isDarkMode ? .black : .white
+        }
 
-        // Subtle gradient for text readability
-        containerView.gradientLayer?.colors = [
-            baseColor.withAlphaComponent(0.85).cgColor,  // 0% - slightly transparent top
-            baseColor.withAlphaComponent(0.6).cgColor,   // 40% - fade
-            baseColor.withAlphaComponent(0.2).cgColor,   // 70% - more fade
-            baseColor.withAlphaComponent(0.0).cgColor    // 100% - transparent
+        let stops = fadeStops ?? [
+            (0.0, 0.85),
+            (0.4, 0.6),
+            (0.7, 0.2),
+            (1.0, 0.0),
         ]
-        containerView.gradientLayer?.locations = [0.0, 0.4, 0.7, 1.0]
+
+        containerView.gradientLayer?.colors = stops.map {
+            baseColor.withAlphaComponent($0.opacity).cgColor
+        }
+        containerView.gradientLayer?.locations = stops.map {
+            NSNumber(value: Double($0.location))
+        }
+        containerView.setNeedsLayout()
+    }
+
+    private func applyFadeConfig(_ fade: [String: Any]?) {
+        guard let fade else { return }
+
+        if let mode = fade["colorMode"] as? String {
+            fadeColorMode = mode
+        }
+        if let extend = fade["extendBelow"] as? NSNumber {
+            containerView.extendBelow = CGFloat(truncating: extend)
+        }
+        if let rawStops = fade["stops"] as? [[String: Any]], !rawStops.isEmpty {
+            var parsed: [(location: CGFloat, opacity: CGFloat)] = []
+            for stop in rawStops {
+                let location = CGFloat(truncating: stop["location"] as? NSNumber ?? 0)
+                let opacity = CGFloat(truncating: stop["opacity"] as? NSNumber ?? 0)
+                parsed.append((location, opacity))
+            }
+            fadeStops = parsed
+        }
+        updateGradientColors()
     }
 
     private func configureItems(_ params: [String: Any]) {
@@ -305,6 +349,7 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
                 if #available(iOS 13.0, *) {
                     containerView.overrideUserInterfaceStyle = dark ? .dark : .light
                 }
+                updateGradientColors()
             }
             result(nil)
         case "updateActions":
@@ -319,6 +364,11 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
                         }
                     }
                 }
+            }
+            result(nil)
+        case "setFade":
+            if let args = call.arguments as? [String: Any] {
+                applyFadeConfig(args)
             }
             result(nil)
         case "setStyle":

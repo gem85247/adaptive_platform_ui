@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'adaptive_app_bar_action.dart';
+import 'native_toolbar_fade.dart';
 
 /// Configuration for an adaptive app bar
 ///
@@ -24,6 +25,7 @@ class AdaptiveAppBar {
     this.useNativeToolbar = true,
     this.tintColor,
     this.titleWidget,
+    this.toolbarFade = NativeToolbarFade.standard,
     this.cupertinoNavigationBar,
     this.appBar,
   });
@@ -69,6 +71,10 @@ class AdaptiveAppBar {
   /// If null, the system default tint color is used.
   final Color? tintColor;
 
+  /// Readability fade behind the iOS 26 native toolbar.
+  /// Ignored when [useNativeToolbar] is false or on non-iOS platforms.
+  final NativeToolbarFade toolbarFade;
+
   /// Custom CupertinoNavigationBar for iOS
   ///
   /// When provided and [useNativeToolbar] is false, this custom navigation bar will be used
@@ -94,6 +100,7 @@ class AdaptiveAppBar {
     bool? useNativeToolbar,
     Color? tintColor,
     Widget? titleWidget,
+    NativeToolbarFade? toolbarFade,
     PreferredSizeWidget? cupertinoNavigationBar,
     PreferredSizeWidget? appBar,
   }) {
@@ -105,6 +112,7 @@ class AdaptiveAppBar {
       useNativeToolbar: useNativeToolbar ?? this.useNativeToolbar,
       tintColor: tintColor ?? this.tintColor,
       titleWidget: titleWidget ?? this.titleWidget,
+      toolbarFade: toolbarFade ?? this.toolbarFade,
       cupertinoNavigationBar:
           cupertinoNavigationBar ?? this.cupertinoNavigationBar,
       appBar: appBar ?? this.appBar,

@@ -84,6 +84,7 @@ class AdaptiveSwitch extends StatelessWidget {
       return Switch(
         value: value,
         onChanged: onChanged,
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
         thumbColor: thumbColor != null
             ? WidgetStateProperty.all(thumbColor)
             : null,

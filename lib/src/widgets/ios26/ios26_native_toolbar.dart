@@ -4,6 +4,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import '../../utils/animation.dart';
 import '../adaptive_app_bar_action.dart';
+import '../native_toolbar_fade.dart';
 
 /// Native iOS 26 UINavigationBar widget using platform views
 /// Implements Liquid Glass design with native blur effects
@@ -18,6 +19,7 @@ class IOS26NativeToolbar extends StatefulWidget {
     this.onActionTap,
     this.titleWidget,
     this.tintColor,
+    this.toolbarFade = NativeToolbarFade.standard,
     this.height = 44.0,
     this.showNativeView = true,
   });
@@ -40,6 +42,9 @@ class IOS26NativeToolbar extends StatefulWidget {
   /// If null, the system default tint color is used.
   final Color? tintColor;
 
+  /// Readability fade behind the clear liquid-glass toolbar.
+  final NativeToolbarFade toolbarFade;
+
   final double height;
   final bool showNativeView;
 
@@ -52,6 +57,7 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
   bool? _lastIsDark;
   int? _lastTint;
   List<AdaptiveAppBarAction>? _lastActions;
+  NativeToolbarFade? _lastFade;
 
   /// Remount key for hot-restart [PlatformException(recreating_view)].
   Key _viewKey = UniqueKey();
@@ -165,6 +171,16 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
         // Ignore errors if platform view is not yet ready
       }
     }
+
+    // Sync toolbar fade
+    if (_lastFade != widget.toolbarFade) {
+      try {
+        await ch.invokeMethod('setFade', widget.toolbarFade.toNativeMap());
+        _lastFade = widget.toolbarFade;
+      } catch (e) {
+        // Ignore errors if platform view is not yet ready
+      }
+    }
   }
 
   bool _actionsEqual(
@@ -196,6 +212,7 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
         'actions': widget.actions!.map((a) => a.toNativeMap()).toList(),
       'isDark': _isDark,
       if (widget.tintColor != null) 'tint': _colorToARGB(widget.tintColor!),
+      'fade': widget.toolbarFade.toNativeMap(),
     };
 
     return AnimatedContainer(
@@ -250,6 +267,7 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
         widget.tintColor != null ? _colorToARGB(widget.tintColor!) : null;
     _lastActions =
         widget.actions != null ? List.of(widget.actions!) : null;
+    _lastFade = widget.toolbarFade;
   }
 
   Future<dynamic> _handleMethodCall(MethodCall call) async {

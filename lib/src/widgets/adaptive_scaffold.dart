@@ -7,6 +7,7 @@ import 'adaptive_app_bar.dart';
 import 'adaptive_badge.dart';
 import 'adaptive_bottom_navigation_bar.dart';
 import 'adaptive_button.dart';
+import 'native_toolbar_fade.dart';
 import 'ios26/ios26_scaffold.dart';
 
 /// Navigation destination for bottom navigation
@@ -314,6 +315,7 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
           leading: widget.appBar?.leading,
           tintColor: widget.appBar?.tintColor,
           titleWidget: _buildIOS26TitleOverlay(),
+          toolbarFade: widget.appBar?.toolbarFade ?? NativeToolbarFade.standard,
           minimizeBehavior: widget.minimizeBehavior,
           enableBlur: widget.enableBlur,
           useHeroBackButton: widget.useHeroBackButton,
