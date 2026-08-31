@@ -470,12 +470,28 @@ class _MaterialPopupMenuButtonState<T>
     }
 
     if (widget.isIconButton) {
+      // Match iOS legacy: size * 0.55 glyph in a size×size box.
+      // Do NOT pass [constraints] here — on PopupMenuButton that sizes the
+      // menu panel, not the IconButton (and a 28px menu overflows its Row).
+      final double side = widget.size ?? 44.0;
+      final double iconSize = side * 0.55;
       return SizedBox(
-        width: widget.size,
-        height: widget.size,
+        width: side,
+        height: side,
         child: PopupMenuButton<int>(
+          padding: EdgeInsets.zero,
+          iconSize: iconSize,
+          style: IconButton.styleFrom(
+            padding: EdgeInsets.zero,
+            minimumSize: Size(side, side),
+            fixedSize: Size(side, side),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            visualDensity: VisualDensity.compact,
+            alignment: Alignment.center,
+          ),
           icon: Icon(
             widget.icon is IconData ? widget.icon as IconData : Icons.more_vert,
+            size: iconSize,
             color: widget.tint,
           ),
           itemBuilder: (context) => menuItems,

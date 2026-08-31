@@ -39,6 +39,8 @@ export 'src/style/sf_symbol.dart';
 // Widgets
 export 'src/widgets/adaptive_app.dart';
 export 'src/widgets/adaptive_app_bar.dart';
+export 'src/widgets/adaptive_app_bar_action.dart';
+export 'src/widgets/native_toolbar_fade.dart';
 export 'src/widgets/adaptive_bottom_navigation_bar.dart';
 export 'src/widgets/adaptive_button.dart';
 export 'src/widgets/adaptive_switch.dart';
@@ -53,7 +55,6 @@ export 'src/widgets/adaptive_alert_dialog.dart';
 export 'src/widgets/adaptive_popup_menu_button.dart';
 export 'src/widgets/adaptive_context_menu.dart';
 export 'src/widgets/adaptive_scaffold.dart';
-export 'src/widgets/adaptive_app_bar_action.dart';
 export 'src/widgets/adaptive_snackbar.dart';
 export 'src/widgets/adaptive_date_picker.dart';
 export 'src/widgets/adaptive_time_picker.dart';

@@ -4,6 +4,7 @@ import '../adaptive_app_bar_action.dart';
 import '../adaptive_bottom_navigation_bar.dart';
 import '../adaptive_button.dart';
 import '../adaptive_scaffold.dart';
+import '../native_toolbar_fade.dart';
 import 'ios26_native_tab_bar.dart';
 import 'ios26_native_toolbar.dart';
 
@@ -22,6 +23,7 @@ class IOS26Scaffold extends StatefulWidget {
     this.leading,
     this.tintColor,
     this.titleWidget,
+    this.toolbarFade = NativeToolbarFade.standard,
     this.minimizeBehavior = TabBarMinimizeBehavior.automatic,
     this.enableBlur = true,
     this.useHeroBackButton = true,
@@ -39,6 +41,7 @@ class IOS26Scaffold extends StatefulWidget {
   /// Custom widget overlaid at the toolbar's title position.
   /// When set, the native title is hidden and this widget is centered instead.
   final Widget? titleWidget;
+  final NativeToolbarFade toolbarFade;
   final TabBarMinimizeBehavior minimizeBehavior;
   final bool enableBlur;
   final bool useHeroBackButton;
@@ -254,6 +257,7 @@ class _IOS26ScaffoldState extends State<IOS26Scaffold>
               actions: widget.actions,
               tintColor: widget.tintColor,
               titleWidget: widget.titleWidget,
+              toolbarFade: widget.toolbarFade,
               onActionTap: (index) {
                 // Call the appropriate action callback
                 if (widget.actions != null &&
