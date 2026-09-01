@@ -154,14 +154,20 @@ class _IOS26ScaffoldState extends State<IOS26Scaffold>
         canPop) {
       final isCurrent = ModalRoute.of(context)?.isCurrent ?? true;
       if (isCurrent) {
+        final isRtl = Directionality.of(context) == TextDirection.rtl;
         final backButton = Container(
           // 62px accounts for the iPadOS system window toolbar width in windowed mode
-          margin: EdgeInsets.only(left: _getIsWindowed() ? 62 : 0),
+          margin: EdgeInsetsDirectional.only(
+            start: _getIsWindowed() ? 62 : 0,
+          ),
           height: 38,
           width: 38,
           child: AdaptiveButton.sfSymbol(
             onPressed: () => Navigator.of(context).pop(),
-            sfSymbol: SFSymbol("chevron.left", size: 20),
+            sfSymbol: SFSymbol(
+              isRtl ? 'chevron.right' : 'chevron.left',
+              size: 20,
+            ),
           ),
         );
         heroLeading = widget.useHeroBackButton

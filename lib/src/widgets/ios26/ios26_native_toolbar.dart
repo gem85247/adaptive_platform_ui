@@ -237,11 +237,11 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
             ),
           ),
           if (widget.leading != null)
-            Positioned(
-              left: 16,
+            PositionedDirectional(
+              start: 16,
               bottom: 3,
               child: Align(
-                alignment: Alignment.centerLeft,
+                alignment: AlignmentDirectional.centerStart,
                 child: widget.leading!,
               ),
             ),
