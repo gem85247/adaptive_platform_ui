@@ -61,7 +61,7 @@ class AdaptiveContextMenu extends StatelessWidget {
     }
 
     // iOS <26 - Use CupertinoContextMenu
-    if (PlatformInfo.isIOS) {
+    if (PlatformInfo.isCupertino) {
       return _buildCupertinoContextMenu(context);
     }
 

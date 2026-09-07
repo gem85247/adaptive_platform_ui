@@ -67,7 +67,7 @@ class AdaptiveFloatingActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // iOS implementation
-    if (PlatformInfo.isIOS) {
+    if (PlatformInfo.isCupertino) {
       return _buildIOSButton(context);
     }
 

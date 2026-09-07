@@ -156,7 +156,7 @@ class AdaptiveTextFormField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (PlatformInfo.isIOS) {
+    if (PlatformInfo.isCupertino) {
       return _buildCupertinoTextFormField(context);
     }
 

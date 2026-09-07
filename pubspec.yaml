@@ -32,6 +32,8 @@ flutter:
       android:
         package: com.berkaycatak.adaptive_platform_ui
         pluginClass: AdaptivePlatformUiPlugin
+      macos:
+        pluginClass: AdaptivePlatformUiPlugin
 
   # To add assets to your package, add an assets section, like this:
   # assets:

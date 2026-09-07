@@ -1,0 +1,108 @@
+import 'package:flutter/cupertino.dart';
+
+/// Best-effort SF Symbol → CupertinoIcons map for Flutter-drawn fallbacks
+/// (CupertinoTabBar, icon buttons). Native iOS 26 / macOS NSMenu use the
+/// symbol name directly.
+IconData sfSymbolToCupertinoIcon(String name) {
+  switch (name) {
+    case 'ellipsis':
+      return CupertinoIcons.ellipsis;
+    case 'ellipsis.circle':
+      return CupertinoIcons.ellipsis_circle;
+    case 'globe':
+      return CupertinoIcons.globe;
+    case 'plus':
+      return CupertinoIcons.add;
+    case 'plus.circle':
+      return CupertinoIcons.add_circled;
+    case 'gear':
+    case 'gearshape':
+      return CupertinoIcons.gear;
+    case 'trash':
+      return CupertinoIcons.trash;
+    case 'square.and.arrow.up':
+      return CupertinoIcons.share;
+    case 'calendar':
+      return CupertinoIcons.calendar;
+    case 'list.bullet':
+      return CupertinoIcons.list_bullet;
+    case 'bubble.left.and.bubble.right':
+      return CupertinoIcons.bubble_left_bubble_right;
+    case 'bubble.left.and.bubble.right.fill':
+      return CupertinoIcons.bubble_left_bubble_right_fill;
+    case 'eye':
+      return CupertinoIcons.eye;
+    case 'eye.slash':
+      return CupertinoIcons.eye_slash;
+    case 'flag':
+      return CupertinoIcons.flag;
+    case 'flag.fill':
+      return CupertinoIcons.flag_fill;
+    case 'doc.on.doc':
+      return CupertinoIcons.doc_on_doc;
+    case 'arrow.up.right.square':
+      return CupertinoIcons.arrow_up_right_square;
+    case 'camera':
+      return CupertinoIcons.camera;
+    case 'folder':
+      return CupertinoIcons.folder;
+    case 'bookmark':
+      return CupertinoIcons.bookmark;
+    case 'photo.on.rectangle':
+      return CupertinoIcons.photo;
+    case 'lock':
+      return CupertinoIcons.lock;
+    case 'paperplane':
+      return CupertinoIcons.paperplane;
+    case 'shield':
+      return CupertinoIcons.shield;
+    case 'sun.max.fill':
+      return CupertinoIcons.sun_max_fill;
+    case 'moon.fill':
+      return CupertinoIcons.moon_fill;
+    case 'line.3.horizontal.decrease':
+      return CupertinoIcons.line_horizontal_3_decrease;
+    case 'house':
+      return CupertinoIcons.house;
+    case 'house.fill':
+      return CupertinoIcons.house_fill;
+    case 'magnifyingglass':
+      return CupertinoIcons.search;
+    case 'heart':
+      return CupertinoIcons.heart;
+    case 'heart.fill':
+      return CupertinoIcons.heart_fill;
+    case 'person':
+      return CupertinoIcons.person;
+    case 'person.fill':
+      return CupertinoIcons.person_fill;
+    case 'star':
+      return CupertinoIcons.star;
+    case 'star.fill':
+      return CupertinoIcons.star_fill;
+    case 'bell':
+      return CupertinoIcons.bell;
+    case 'bell.fill':
+      return CupertinoIcons.bell_fill;
+    case 'plus.circle.fill':
+      return CupertinoIcons.add_circled_solid;
+    case 'checkmark.circle':
+      return CupertinoIcons.checkmark_circle;
+    case 'info.circle':
+      return CupertinoIcons.info;
+    case 'text.bubble':
+      return CupertinoIcons.chat_bubble;
+    case 'text.bubble.fill':
+      return CupertinoIcons.chat_bubble_fill;
+    case 'iphone':
+      return CupertinoIcons.device_phone_portrait;
+    case 'sparkles':
+      return CupertinoIcons.sparkles;
+    case 'forward.end':
+      return CupertinoIcons.forward_end;
+    case 'square.grid.2x2':
+      return CupertinoIcons.square_grid_2x2;
+    default:
+      return CupertinoIcons.circle;
+  }
+}

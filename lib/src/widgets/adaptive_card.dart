@@ -86,7 +86,7 @@ class AdaptiveCard extends StatelessWidget {
         : child;
 
     // iOS - Use custom iOS-style card
-    if (PlatformInfo.isIOS) {
+    if (PlatformInfo.isCupertino) {
       return _IOSCard(
         color: color,
         margin: margin,

@@ -9,6 +9,16 @@ class PlatformInfo {
   /// Returns true if the current platform is iOS
   static bool get isIOS => !kIsWeb && Platform.isIOS;
 
+  /// Flutter-drawn Cupertino chrome (not UiKitView).
+  ///
+  /// macOS uses this so widgets match iOS instead of Material. Native iOS 26
+  /// platform views stay behind [isIOS26OrHigher] — do not treat macOS as iOS,
+  /// or a macOS 26 version string would enable UiKitViews that do not exist.
+  static bool get isCupertino => isIOS || isMacOS;
+
+  /// Accept SF Symbol name strings (native iOS 26 menus, or native NSMenu on macOS).
+  static bool get useSfSymbols => isIOS26OrHigher() || isMacOS;
+
   /// Returns true if the current platform is Android
   static bool get isAndroid => !kIsWeb && Platform.isAndroid;
 

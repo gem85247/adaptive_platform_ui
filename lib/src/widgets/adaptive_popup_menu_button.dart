@@ -1,6 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import '../platform/macos_controls.dart';
 import '../platform/platform_info.dart';
+import '../style/sf_symbol_icon.dart';
 import 'ios26/ios26_popup_menu_button.dart';
 
 export 'ios26/ios26_popup_menu_button.dart'
@@ -26,6 +29,15 @@ class AdaptivePopupMenuButton<T> {
     bool shrinkWrap = false,
     PopupButtonStyle buttonStyle = PopupButtonStyle.plain,
   }) {
+    if (PlatformInfo.isMacOS) {
+      return _MacOSPopupMenuButton<T>(
+        label: label,
+        items: items,
+        onSelected: onSelected,
+        height: height,
+      );
+    }
+
     // iOS 26+ - Use native iOS 26 popup menu button
     if (PlatformInfo.isIOS26OrHigher()) {
       return IOS26PopupMenuButton<T>(
@@ -89,6 +101,16 @@ class AdaptivePopupMenuButton<T> {
       'onTap is only used with triggerOnLongPress: true (tap fires onTap, '
       'long-press opens the menu).',
     );
+    if (PlatformInfo.isMacOS) {
+      return _MacOSPopupMenuButton<T>.widget(
+        items: items,
+        onSelected: onSelected,
+        triggerOnLongPress: triggerOnLongPress,
+        onTap: onTap,
+        child: child,
+      );
+    }
+
     // iOS 26+ - Use gesture detector with native menu
     if (PlatformInfo.isIOS26OrHigher()) {
       return IOS26PopupMenuButton<T>.widget(
@@ -147,6 +169,16 @@ class AdaptivePopupMenuButton<T> {
     double size = 44.0,
     PopupButtonStyle buttonStyle = PopupButtonStyle.glass,
   }) {
+    if (PlatformInfo.isMacOS) {
+      return _MacOSPopupMenuButton<T>.icon(
+        icon: icon,
+        items: items,
+        onSelected: onSelected,
+        tint: tint,
+        size: size,
+      );
+    }
+
     // iOS 26+ - Use native iOS 26 popup menu button (expects String - SF Symbol)
     if (PlatformInfo.isIOS26OrHigher()) {
       return IOS26PopupMenuButton<T>.icon(
@@ -189,38 +221,13 @@ class AdaptivePopupMenuButton<T> {
           padding: const EdgeInsets.all(4),
           onPressed: () => _showMenu<T>(context, null, items, onSelected),
           child: Icon(
-            icon is IconData ? icon : _cupertinoIconForSfSymbol(icon is String ? icon : 'ellipsis.circle'),
+            icon is IconData ? icon : sfSymbolToCupertinoIcon(icon is String ? icon : 'ellipsis.circle'),
             size: size * 0.55,
             color: tint,
           ),
         ),
       ),
     );
-  }
-
-  /// Best-effort mapping of common SF Symbol names to Cupertino icons so the
-  /// drawn fallback matches the native glyph.
-  static IconData _cupertinoIconForSfSymbol(String name) {
-    switch (name) {
-      case 'ellipsis':
-        return CupertinoIcons.ellipsis;
-      case 'ellipsis.circle':
-        return CupertinoIcons.ellipsis_circle;
-      case 'globe':
-        return CupertinoIcons.globe;
-      case 'plus':
-        return CupertinoIcons.add;
-      case 'plus.circle':
-        return CupertinoIcons.add_circled;
-      case 'gear':
-        return CupertinoIcons.gear;
-      case 'trash':
-        return CupertinoIcons.trash;
-      case 'square.and.arrow.up':
-        return CupertinoIcons.share;
-      default:
-        return CupertinoIcons.ellipsis_circle;
-    }
   }
 
   static Widget _buildActionSheetContent<T>(AdaptivePopupMenuItem<T> item) {
@@ -306,7 +313,7 @@ class AdaptivePopupMenuButton<T> {
             onPressed: () => Navigator.of(ctx).pop(),
             isDefaultAction: true,
             child: Text(
-              PlatformInfo.isIOS
+              PlatformInfo.isCupertino
                   ? CupertinoLocalizations.of(ctx).cancelButtonLabel
                   : MaterialLocalizations.of(ctx).cancelButtonLabel,
             ),
@@ -526,6 +533,124 @@ class _MaterialPopupMenuButtonState<T>
             }
           },
         ),
+      ),
+    );
+  }
+}
+
+class _MacOSPopupMenuButton<T> extends StatelessWidget {
+  const _MacOSPopupMenuButton({
+    required this.items,
+    required this.onSelected,
+    this.label,
+    this.height = 32,
+  }) : icon = null,
+       size = 44,
+       child = null,
+       triggerOnLongPress = false,
+       onTap = null,
+       tint = null;
+
+  const _MacOSPopupMenuButton.icon({
+    required this.icon,
+    required this.items,
+    required this.onSelected,
+    this.tint,
+    this.size = 44,
+  }) : label = null,
+       height = 32,
+       child = null,
+       triggerOnLongPress = false,
+       onTap = null;
+
+  const _MacOSPopupMenuButton.widget({
+    required this.items,
+    required this.onSelected,
+    required this.child,
+    this.triggerOnLongPress = false,
+    this.onTap,
+  }) : label = null,
+       icon = null,
+       tint = null,
+       height = 32,
+       size = 44;
+
+  final String? label;
+  final dynamic icon;
+  final Widget? child;
+  final double height;
+  final double size;
+  final Color? tint;
+  final bool triggerOnLongPress;
+  final VoidCallback? onTap;
+  final List<AdaptivePopupMenuEntry> items;
+  final void Function(int index, AdaptivePopupMenuItem<T> entry) onSelected;
+
+  Future<void> _open(BuildContext context) async {
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return;
+    final origin = box.localToGlobal(Offset.zero);
+    final flutterView = View.of(context);
+    final viewSize = flutterView.physicalSize / flutterView.devicePixelRatio;
+    int? selected;
+    try {
+      selected = await MacOSControls.showMenu(
+        x: origin.dx,
+        y: origin.dy,
+        width: box.size.width,
+        height: box.size.height,
+        viewWidth: viewSize.width,
+        viewHeight: viewSize.height,
+        items: items,
+      );
+    } on MissingPluginException {
+      if (!context.mounted) return;
+      await AdaptivePopupMenuButton._showMenu<T>(context, label, items, onSelected);
+      return;
+    }
+    if (selected == null) return;
+    final entry = items[selected];
+    if (entry is AdaptivePopupMenuItem<T>) {
+      onSelected(selected, entry);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final Widget trigger;
+    if (child != null) {
+      trigger = child!;
+    } else if (icon != null) {
+      trigger = SizedBox(
+        width: size,
+        height: size,
+        child: Icon(
+          icon is IconData
+              ? icon as IconData
+              : sfSymbolToCupertinoIcon(icon is String ? icon : 'ellipsis.circle'),
+          size: size * 0.55,
+          color: tint,
+        ),
+      );
+    } else {
+      trigger = SizedBox(
+        height: height,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(label ?? ''),
+          ),
+        ),
+      );
+    }
+
+    return Builder(
+      builder: (buttonContext) => GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: triggerOnLongPress ? onTap : () => _open(buttonContext),
+        onLongPress: triggerOnLongPress ? () => _open(buttonContext) : null,
+        child: trigger,
       ),
     );
   }
