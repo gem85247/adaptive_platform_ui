@@ -57,6 +57,24 @@ void main() {
       }
     });
 
+    test('useSfSymbols is iOS 26 or macOS', () {
+      expect(
+        PlatformInfo.useSfSymbols,
+        PlatformInfo.isIOS26OrHigher() || PlatformInfo.isMacOS,
+      );
+    });
+
+    test('isCupertino is iOS or macOS only', () {
+      expect(
+        PlatformInfo.isCupertino,
+        PlatformInfo.isIOS || PlatformInfo.isMacOS,
+      );
+      if (PlatformInfo.isMacOS) {
+        expect(PlatformInfo.isIOS, isFalse);
+        expect(PlatformInfo.isIOS26OrHigher(), isFalse);
+      }
+    });
+
     test('platformDescription returns non-empty string', () {
       expect(PlatformInfo.platformDescription.isNotEmpty, isTrue);
     });

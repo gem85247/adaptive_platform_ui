@@ -57,7 +57,7 @@ class AdaptiveSearchField extends StatelessWidget {
       );
     }
 
-    if (PlatformInfo.isIOS) {
+    if (PlatformInfo.isCupertino) {
       return CupertinoSearchTextField(
         controller: controller,
         focusNode: focusNode,

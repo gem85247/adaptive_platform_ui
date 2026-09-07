@@ -83,7 +83,7 @@ class AdaptiveSegmentedControl extends StatelessWidget {
     }
 
     // iOS <26 (iOS 18 and below) - Use CupertinoSlidingSegmentedControl
-    if (PlatformInfo.isIOS) {
+    if (PlatformInfo.isCupertino) {
       return _buildCupertinoSegmentedControl(context);
     }
 

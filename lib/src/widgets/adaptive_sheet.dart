@@ -18,7 +18,7 @@ class AdaptiveSheet {
     bool useRootNavigator = true,
     Color? barrierColor,
   }) {
-    if (PlatformInfo.isIOS) {
+    if (PlatformInfo.isCupertino) {
       return showCupertinoSheet<T>(
         context: context,
         useNestedNavigation: false,

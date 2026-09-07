@@ -72,8 +72,27 @@ class AdaptiveTooltip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // macOS: hover tooltip. The iOS path is tap/long-press, which is wrong for a mouse.
+    if (PlatformInfo.isMacOS) {
+      return Tooltip(
+        message: message,
+        preferBelow: preferBelow,
+        verticalOffset: verticalOffset,
+        padding: padding,
+        margin: margin,
+        constraints: height != null
+            ? BoxConstraints(minHeight: height!, maxHeight: height!)
+            : null,
+        decoration: decoration,
+        textStyle: textStyle,
+        waitDuration: waitDuration ?? const Duration(milliseconds: 400),
+        showDuration: showDuration,
+        child: child,
+      );
+    }
+
     // iOS - Use custom iOS-style tooltip
-    if (PlatformInfo.isIOS) {
+    if (PlatformInfo.isCupertino) {
       return _IOSTooltip(
         message: message,
         preferBelow: preferBelow,

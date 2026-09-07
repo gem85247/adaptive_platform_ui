@@ -99,7 +99,7 @@ class AdaptiveSlider extends StatelessWidget {
     }
 
     // iOS 18 and below - Use traditional CupertinoSlider
-    if (PlatformInfo.isIOS) {
+    if (PlatformInfo.isCupertino) {
       return CupertinoSlider(
         value: value,
         onChanged: onChanged,

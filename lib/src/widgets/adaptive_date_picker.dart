@@ -27,7 +27,7 @@ class AdaptiveDatePicker {
     final effectiveFirstDate = firstDate ?? DateTime(1900);
     final effectiveLastDate = lastDate ?? DateTime(2100);
 
-    if (PlatformInfo.isIOS) {
+    if (PlatformInfo.isCupertino) {
       return _showCupertinoDatePicker(
         context: context,
         initialDate: initialDate,
@@ -186,7 +186,7 @@ class _CupertinoDatePickerContentState
                   padding: EdgeInsets.zero,
                   onPressed: () => Navigator.of(context).pop(),
                   child: Text(
-                    PlatformInfo.isIOS
+                    PlatformInfo.isCupertino
                         ? CupertinoLocalizations.of(context).cancelButtonLabel
                         : MaterialLocalizations.of(context).cancelButtonLabel,
                   ),

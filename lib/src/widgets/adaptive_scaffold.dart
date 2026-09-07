@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../platform/platform_info.dart';
 import '../style/sf_symbol.dart';
+import '../style/sf_symbol_icon.dart';
 import 'adaptive_app_bar.dart';
 import 'adaptive_badge.dart';
 import 'adaptive_bottom_navigation_bar.dart';
@@ -328,7 +329,7 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
 
     // iOS <26 (iOS 18 and below) OR iOS 26+ with useNativeToolbar: false
     // Use CupertinoPageScaffold with CupertinoTabBar if destinations provided
-    if (PlatformInfo.isIOS) {
+    if (PlatformInfo.isCupertino) {
       Widget? effectiveLeading = widget.appBar?.leading;
 
       if (widget.bottomNavigationBar?.items != null &&
@@ -790,30 +791,7 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
   }
 
   IconData _sfSymbolToCupertinoIcon(String sfSymbol) {
-    const iconMap = {
-      'house': CupertinoIcons.house,
-      'house.fill': CupertinoIcons.house_fill,
-      'magnifyingglass': CupertinoIcons.search,
-      'heart': CupertinoIcons.heart,
-      'heart.fill': CupertinoIcons.heart_fill,
-      'person': CupertinoIcons.person,
-      'person.fill': CupertinoIcons.person_fill,
-      'gear': CupertinoIcons.settings,
-      'star': CupertinoIcons.star,
-      'star.fill': CupertinoIcons.star_fill,
-      'bell': CupertinoIcons.bell,
-      'bell.fill': CupertinoIcons.bell_fill,
-      'bag': CupertinoIcons.bag,
-      'bag.fill': CupertinoIcons.bag_fill,
-      'bookmark': CupertinoIcons.bookmark,
-      'bookmark.fill': CupertinoIcons.bookmark_fill,
-      'info.circle': CupertinoIcons.info_circle,
-      'info.circle.fill': CupertinoIcons.info_circle_fill,
-      'plus.circle': CupertinoIcons.add_circled,
-      'plus': CupertinoIcons.add,
-      'checkmark.circle': CupertinoIcons.checkmark_circle,
-    };
-    return iconMap[sfSymbol] ?? CupertinoIcons.circle;
+    return sfSymbolToCupertinoIcon(sfSymbol);
   }
 
   Widget _buildNavigationIconWidget({

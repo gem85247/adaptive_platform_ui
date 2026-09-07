@@ -1,5 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import '../platform/macos_controls.dart';
 import '../platform/platform_info.dart';
 import 'ios26/ios26_alert_dialog.dart';
 
@@ -57,7 +59,23 @@ class AdaptiveAlertDialog {
     double? iconSize,
     Color? iconColor,
     String? oneTimeCode,
-  }) {
+  }) async {
+    if (PlatformInfo.isMacOS) {
+      try {
+        final index = await MacOSControls.showAlert(
+          title: title,
+          message: message,
+          actions: actions,
+        );
+        if (index != null && index >= 0 && index < actions.length) {
+          actions[index].onPressed();
+        }
+        return;
+      } on MissingPluginException {
+        // Fall through to Cupertino.
+      }
+    }
+
     // iOS 26+ - Use native iOS 26 alert dialog
     if (PlatformInfo.isIOS26OrHigher()) {
       // Convert icon to String if needed for iOS 26 (expects SF Symbol)
@@ -86,7 +104,7 @@ class AdaptiveAlertDialog {
     }
 
     // iOS 18 and below - Use CupertinoAlertDialog
-    if (PlatformInfo.isIOS) {
+    if (PlatformInfo.isCupertino) {
       return showCupertinoDialog<void>(
         context: context,
         builder: (context) {
@@ -233,7 +251,7 @@ class AdaptiveAlertDialog {
     }
 
     // iOS 18 and below - Use CupertinoAlertDialog with text field
-    if (PlatformInfo.isIOS) {
+    if (PlatformInfo.isCupertino) {
       final textController = TextEditingController(text: input.initialValue);
 
       return showCupertinoDialog<String?>(

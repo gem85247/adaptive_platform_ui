@@ -91,7 +91,7 @@ class AdaptiveFormSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (PlatformInfo.isIOS) {
+    if (PlatformInfo.isCupertino) {
       return _buildIOSFormSection(context);
     }
     if (PlatformInfo.isAndroid) {

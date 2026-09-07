@@ -245,7 +245,7 @@ class AdaptiveApp extends StatelessWidget {
         routerDelegate != null ||
         routeInformationParser != null;
 
-    if (PlatformInfo.isIOS) {
+    if (PlatformInfo.isCupertino) {
       return _buildCupertinoApp(context, platform, isRouter);
     }
 
@@ -469,7 +469,7 @@ class AdaptiveApp extends StatelessWidget {
   PlatformTarget _detectPlatform() {
     if (PlatformInfo.isIOS26OrHigher()) {
       return PlatformTarget.ios26Plus;
-    } else if (PlatformInfo.isIOS18OrLower()) {
+    } else if (PlatformInfo.isIOS18OrLower() || PlatformInfo.isMacOS) {
       return PlatformTarget.ios18OrLower;
     } else if (PlatformInfo.isIOS) {
       return PlatformTarget.ios;
@@ -477,8 +477,6 @@ class AdaptiveApp extends StatelessWidget {
       return PlatformTarget.android;
     } else if (PlatformInfo.isWeb) {
       return PlatformTarget.web;
-    } else if (PlatformInfo.isMacOS) {
-      return PlatformTarget.desktop;
     }
     return PlatformTarget.other;
   }
