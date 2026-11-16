@@ -74,6 +74,7 @@ class AdaptiveAlertDialog {
       } on MissingPluginException {
         // Fall through to Cupertino.
       }
+      if (!context.mounted) return;
     }
 
     // iOS 26+ - Use native iOS 26 alert dialog

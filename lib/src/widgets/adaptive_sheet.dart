@@ -22,7 +22,8 @@ class AdaptiveSheet {
       return showCupertinoSheet<T>(
         context: context,
         useNestedNavigation: false,
-        pageBuilder: builder,
+        // What the route does with a plain builder; pageBuilder is deprecated.
+        scrollableBuilder: (context, _) => builder(context),
       );
     }
 
