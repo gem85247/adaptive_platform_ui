@@ -63,15 +63,6 @@ class AdaptivePopupMenuButton<T> {
     }
 
     // iOS <26 (iOS 18 and below) - Use CupertinoButton with action sheet (iOS fallback)
-    return _iosLegacyButton<T>(label: label, items: items, onSelected: onSelected, height: height);
-  }
-
-  static Widget _iosLegacyButton<T>({
-    required String label,
-    required List<AdaptivePopupMenuEntry> items,
-    required void Function(int index, AdaptivePopupMenuItem<T> entry) onSelected,
-    required double height,
-  }) {
     return Builder(
       builder: (context) => SizedBox(
         height: height,
@@ -135,20 +126,14 @@ class AdaptivePopupMenuButton<T> {
     }
 
     // iOS <26 (iOS 18 and below) - Use GestureDetector with action sheet
-    return _iosLegacyWidget<T>(items: items, onSelected: onSelected, triggerOnLongPress: triggerOnLongPress, onTap: onTap, child: child);
-  }
-
-  static Widget _iosLegacyWidget<T>({
-    required List<AdaptivePopupMenuEntry> items,
-    required void Function(int index, AdaptivePopupMenuItem<T> entry) onSelected,
-    required bool triggerOnLongPress,
-    VoidCallback? onTap,
-    required Widget child,
-  }) {
     return Builder(
       builder: (context) => GestureDetector(
-        onTap: triggerOnLongPress ? onTap : () => _showMenu<T>(context, null, items, onSelected),
-        onLongPress: triggerOnLongPress ? () => _showMenu<T>(context, null, items, onSelected) : null,
+        onTap: triggerOnLongPress
+            ? onTap
+            : () => _showMenu<T>(context, null, items, onSelected),
+        onLongPress: triggerOnLongPress
+            ? () => _showMenu<T>(context, null, items, onSelected)
+            : null,
         child: child,
       ),
     );
@@ -159,6 +144,8 @@ class AdaptivePopupMenuButton<T> {
   /// [icon] can be either:
   /// - String (SF Symbol) for iOS 26+
   /// - IconData for iOS <26 and Android
+  /// [iconSize] is the glyph's point size on every platform; the button
+  /// itself stays [size] wide and tall.
   static Widget icon<T>({
     Key? key,
     required dynamic icon,
@@ -167,6 +154,7 @@ class AdaptivePopupMenuButton<T> {
     onSelected,
     Color? tint,
     double size = 44.0,
+    double? iconSize,
     PopupButtonStyle buttonStyle = PopupButtonStyle.glass,
   }) {
     if (PlatformInfo.isMacOS) {
@@ -176,6 +164,7 @@ class AdaptivePopupMenuButton<T> {
         onSelected: onSelected,
         tint: tint,
         size: size,
+        iconSize: iconSize,
       );
     }
 
@@ -187,6 +176,7 @@ class AdaptivePopupMenuButton<T> {
         onSelected: onSelected,
         tint: tint,
         size: size,
+        iconSize: iconSize,
         buttonStyle: buttonStyle,
       );
     }
@@ -199,20 +189,11 @@ class AdaptivePopupMenuButton<T> {
         onSelected: onSelected,
         tint: tint,
         size: size,
+        iconSize: iconSize,
       );
     }
 
     // iOS <26 (iOS 18 and below) - Use icon button with action sheet (iOS fallback)
-    return _iosLegacyIcon<T>(icon: icon, items: items, onSelected: onSelected, size: size);
-  }
-
-  static Widget _iosLegacyIcon<T>({
-    required dynamic icon,
-    required List<AdaptivePopupMenuEntry> items,
-    required void Function(int index, AdaptivePopupMenuItem<T> entry) onSelected,
-    required double size,
-    Color? tint,
-  }) {
     return Builder(
       builder: (context) => SizedBox(
         width: size,
@@ -222,12 +203,49 @@ class AdaptivePopupMenuButton<T> {
           onPressed: () => _showMenu<T>(context, null, items, onSelected),
           child: Icon(
             icon is IconData ? icon : sfSymbolToCupertinoIcon(icon is String ? icon : 'ellipsis.circle'),
-            size: size * 0.55,
+            size: iconSize ?? size * 0.55,
             color: tint,
           ),
         ),
       ),
     );
+  }
+
+  /// Opens [items] for a button drawn elsewhere, such as an app bar action:
+  /// an action sheet on iOS, a popup menu at [context]'s button otherwise.
+  /// Buttons above the navigator pass the page's [navigator].
+  static Future<void> show<T>(
+    BuildContext context, {
+    required List<AdaptivePopupMenuEntry> items,
+    required void Function(int index, AdaptivePopupMenuItem<T> entry)
+    onSelected,
+    NavigatorState? navigator,
+  }) async {
+    final menuContext =
+        (navigator ?? Navigator.maybeOf(context))?.overlay?.context;
+    if (menuContext == null) return;
+    if (PlatformInfo.isMacOS) {
+      return _showMacOSMenu<T>(context, items, onSelected, fallbackContext: menuContext);
+    }
+    if (PlatformInfo.isCupertino) {
+      return _showMenu<T>(menuContext, null, items, onSelected);
+    }
+    final button = context.findRenderObject() as RenderBox?;
+    final overlay = menuContext.findRenderObject() as RenderBox?;
+    if (button == null || overlay == null) return;
+    // Global coordinates, as the button may sit in a bar above the navigator
+    final topLeft = overlay.globalToLocal(button.localToGlobal(Offset.zero));
+    final selected = await showMenu<int>(
+      context: menuContext,
+      position: RelativeRect.fromRect(
+        topLeft & button.size,
+        Offset.zero & overlay.size,
+      ),
+      items: _materialMenuItems<T>(menuContext, items),
+    );
+    if (selected != null && items[selected] is AdaptivePopupMenuItem<T>) {
+      onSelected(selected, items[selected] as AdaptivePopupMenuItem<T>);
+    }
   }
 
   static Widget _buildActionSheetContent<T>(AdaptivePopupMenuItem<T> item) {
@@ -267,8 +285,9 @@ class AdaptivePopupMenuButton<T> {
         ],
         Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment:
-              hasImage ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+          crossAxisAlignment: hasImage
+              ? CrossAxisAlignment.start
+              : CrossAxisAlignment.center,
           children: [
             Text(item.label),
             if (hasSubtitle)
@@ -285,112 +304,17 @@ class AdaptivePopupMenuButton<T> {
     );
   }
 
-  static Future<void> _showMenu<T>(
+  static List<PopupMenuEntry<int>> _materialMenuItems<T>(
     BuildContext context,
-    String? title,
     List<AdaptivePopupMenuEntry> items,
-    void Function(int index, AdaptivePopupMenuItem<T> entry) onSelected,
-  ) async {
-    final selected = await showCupertinoModalPopup<int>(
-      context: context,
-      builder: (ctx) {
-        return CupertinoActionSheet(
-          title: title != null ? Text(title) : null,
-          actions: [
-            for (var i = 0; i < items.length; i++)
-              if (items[i] is AdaptivePopupMenuItem<T>)
-                CupertinoActionSheetAction(
-                  onPressed: () => Navigator.of(ctx).pop(i),
-                  isDestructiveAction: (items[i] as AdaptivePopupMenuItem<T>).isDestructive,
-                  child: _buildActionSheetContent<T>(
-                    items[i] as AdaptivePopupMenuItem<T>,
-                  ),
-                )
-              else
-                const SizedBox(height: 8),
-          ],
-          cancelButton: CupertinoActionSheetAction(
-            onPressed: () => Navigator.of(ctx).pop(),
-            isDefaultAction: true,
-            child: Text(
-              PlatformInfo.isCupertino
-                  ? CupertinoLocalizations.of(ctx).cancelButtonLabel
-                  : MaterialLocalizations.of(ctx).cancelButtonLabel,
-            ),
-          ),
-        );
-      },
-    );
-
-    if (selected != null) {
-      final selectedEntry = items[selected];
-      if (selectedEntry is AdaptivePopupMenuItem<T>) {
-        onSelected(selected, selectedEntry);
-      }
-    }
-  }
-}
-
-/// Material implementation of popup menu button for Android
-class _MaterialPopupMenuButton<T> extends StatefulWidget {
-  const _MaterialPopupMenuButton({
-    required this.label,
-    required this.items,
-    required this.onSelected,
-    this.tint,
-    this.height = 32.0,
-  }) : icon = null,
-       size = null,
-       child = null;
-
-  const _MaterialPopupMenuButton.icon({
-    required this.icon,
-    required this.items,
-    required this.onSelected,
-    this.tint,
-    this.size = 44.0,
-  }) : label = null,
-       height = null,
-       child = null;
-
-  const _MaterialPopupMenuButton.widget({
-    required this.items,
-    required this.onSelected,
-    this.tint,
-    required this.child,
-  }) : label = null,
-       icon = null,
-       height = null,
-       size = null;
-
-  final String? label;
-  final dynamic icon; // IconData for Android
-  final Widget? child;
-  final List<AdaptivePopupMenuEntry> items;
-  final void Function(int index, AdaptivePopupMenuItem<T> entry) onSelected;
-  final Color? tint;
-  final double? height;
-  final double? size;
-
-  bool get isIconButton => icon != null;
-  bool get isCustomWidget => child != null;
-
-  @override
-  State<_MaterialPopupMenuButton<T>> createState() =>
-      _MaterialPopupMenuButtonState<T>();
-}
-
-class _MaterialPopupMenuButtonState<T>
-    extends State<_MaterialPopupMenuButton<T>> {
-  @override
-  Widget build(BuildContext context) {
+  ) {
     final menuItems = <PopupMenuEntry<int>>[];
 
-    for (var i = 0; i < widget.items.length; i++) {
-      if (widget.items[i] is AdaptivePopupMenuDivider) {
-        menuItems.add(const PopupMenuDivider());
-      } else if (widget.items[i] is AdaptivePopupMenuItem<T>) {
-        final item = widget.items[i] as AdaptivePopupMenuItem<T>;
+    for (var i = 0; i < items.length; i++) {
+      if (items[i] is AdaptivePopupMenuDivider) {
+        menuItems.addAll(_materialDivider(context, items[i], i));
+      } else if (items[i] is AdaptivePopupMenuItem<T>) {
+        final item = items[i] as AdaptivePopupMenuItem<T>;
         final labelStyle = item.isDestructive
             ? TextStyle(color: Theme.of(context).colorScheme.error)
             : null;
@@ -432,9 +356,7 @@ class _MaterialPopupMenuButtonState<T>
                             Text(item.label, style: labelStyle),
                             Text(
                               item.subtitle!,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
+                              style: Theme.of(context).textTheme.bodySmall
                                   ?.copyWith(
                                     color: Theme.of(context)
                                         .textTheme
@@ -461,6 +383,198 @@ class _MaterialPopupMenuButtonState<T>
         );
       }
     }
+    return menuItems;
+  }
+
+  /// Opens [items] as a native AppKit menu at [buttonContext]'s button, or as
+  /// the action sheet when the macOS plugin isn't registered.
+  static Future<void> _showMacOSMenu<T>(
+    BuildContext buttonContext,
+    List<AdaptivePopupMenuEntry> items,
+    void Function(int index, AdaptivePopupMenuItem<T> entry) onSelected, {
+    String? title,
+    BuildContext? fallbackContext,
+  }) async {
+    final box = buttonContext.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return;
+    final origin = box.localToGlobal(Offset.zero);
+    final flutterView = View.of(buttonContext);
+    final viewSize = flutterView.physicalSize / flutterView.devicePixelRatio;
+    int? selected;
+    try {
+      selected = await MacOSControls.showMenu(
+        x: origin.dx,
+        y: origin.dy,
+        width: box.size.width,
+        height: box.size.height,
+        viewWidth: viewSize.width,
+        viewHeight: viewSize.height,
+        items: items,
+      );
+    } on MissingPluginException {
+      final context = fallbackContext ?? buttonContext;
+      if (!context.mounted) return;
+      return _showMenu<T>(context, title, items, onSelected);
+    }
+    if (selected == null) return;
+    final entry = items[selected];
+    if (entry is AdaptivePopupMenuItem<T>) {
+      onSelected(selected, entry);
+    }
+  }
+
+  static Future<void> _showMenu<T>(
+    BuildContext context,
+    String? title,
+    List<AdaptivePopupMenuEntry> items,
+    void Function(int index, AdaptivePopupMenuItem<T> entry) onSelected,
+  ) async {
+    final selected = await showCupertinoModalPopup<int>(
+      context: context,
+      builder: (ctx) {
+        return CupertinoActionSheet(
+          title: title != null ? Text(title) : null,
+          actions: [
+            for (var i = 0; i < items.length; i++)
+              if (items[i] is AdaptivePopupMenuItem<T>)
+                CupertinoActionSheetAction(
+                  onPressed: () => Navigator.of(ctx).pop(i),
+                  isDestructiveAction:
+                      (items[i] as AdaptivePopupMenuItem<T>).isDestructive,
+                  child: _buildActionSheetContent<T>(
+                    items[i] as AdaptivePopupMenuItem<T>,
+                  ),
+                )
+              else
+                _buildSheetDivider(ctx, items[i]),
+          ],
+          cancelButton: CupertinoActionSheetAction(
+            onPressed: () => Navigator.of(ctx).pop(),
+            isDefaultAction: true,
+            child: Text(
+              PlatformInfo.isCupertino
+                  ? CupertinoLocalizations.of(ctx).cancelButtonLabel
+                  : MaterialLocalizations.of(ctx).cancelButtonLabel,
+            ),
+          ),
+        );
+      },
+    );
+
+    if (selected != null) {
+      final selectedEntry = items[selected];
+      if (selectedEntry is AdaptivePopupMenuItem<T>) {
+        onSelected(selected, selectedEntry);
+      }
+    }
+  }
+
+  /// The gap between two groups in the action sheet, carrying the group's
+  /// title when the divider has one; the sheet has no section of its own.
+  static Widget _buildSheetDivider(
+    BuildContext context,
+    AdaptivePopupMenuEntry entry,
+  ) {
+    final title = entry is AdaptivePopupMenuDivider ? entry.title : null;
+    if (title == null || title.isEmpty) return const SizedBox(height: 8);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+      child: SizedBox(
+        width: double.infinity,
+        child: Text(
+          title,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: CupertinoColors.secondaryLabel.resolveFrom(context),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// A Material divider, preceded by nothing for the first group and followed
+  /// by a disabled heading row when the divider carries a title.
+  static List<PopupMenuEntry<int>> _materialDivider(
+    BuildContext context,
+    AdaptivePopupMenuEntry entry,
+    int index,
+  ) {
+    final title = entry is AdaptivePopupMenuDivider ? entry.title : null;
+    return [
+      if (index > 0) const PopupMenuDivider(),
+      if (title != null && title.isNotEmpty)
+        PopupMenuItem<int>(
+          enabled: false,
+          height: 32,
+          child: Text(title, style: Theme.of(context).textTheme.labelMedium),
+        ),
+    ];
+  }
+}
+
+/// Material implementation of popup menu button for Android
+class _MaterialPopupMenuButton<T> extends StatefulWidget {
+  const _MaterialPopupMenuButton({
+    required this.label,
+    required this.items,
+    required this.onSelected,
+    this.tint,
+    this.height = 32.0,
+  }) : icon = null,
+       size = null,
+       iconSize = null,
+       child = null;
+
+  const _MaterialPopupMenuButton.icon({
+    required this.icon,
+    required this.items,
+    required this.onSelected,
+    this.tint,
+    this.size = 44.0,
+    this.iconSize,
+  }) : label = null,
+       height = null,
+       child = null;
+
+  const _MaterialPopupMenuButton.widget({
+    required this.items,
+    required this.onSelected,
+    this.tint,
+    required this.child,
+  }) : label = null,
+       icon = null,
+       height = null,
+       size = null,
+       iconSize = null;
+
+  final String? label;
+  final dynamic icon; // IconData for Android
+  final Widget? child;
+  final List<AdaptivePopupMenuEntry> items;
+  final void Function(int index, AdaptivePopupMenuItem<T> entry) onSelected;
+  final Color? tint;
+  final double? height;
+  final double? size;
+  final double? iconSize;
+
+  bool get isIconButton => icon != null;
+  bool get isCustomWidget => child != null;
+
+  @override
+  State<_MaterialPopupMenuButton<T>> createState() =>
+      _MaterialPopupMenuButtonState<T>();
+}
+
+class _MaterialPopupMenuButtonState<T>
+    extends State<_MaterialPopupMenuButton<T>> {
+  @override
+  Widget build(BuildContext context) {
+    final menuItems = AdaptivePopupMenuButton._materialMenuItems<T>(
+      context,
+      widget.items,
+    );
 
     // Custom widget case
     if (widget.isCustomWidget) {
@@ -481,7 +595,7 @@ class _MaterialPopupMenuButtonState<T>
       // Do NOT pass [constraints] here — on PopupMenuButton that sizes the
       // menu panel, not the IconButton (and a 28px menu overflows its Row).
       final double side = widget.size ?? 44.0;
-      final double iconSize = side * 0.55;
+      final double iconSize = widget.iconSize ?? side * 0.55;
       return SizedBox(
         width: side,
         height: side,
@@ -498,8 +612,8 @@ class _MaterialPopupMenuButtonState<T>
           ),
           icon: Icon(
             widget.icon is IconData ? widget.icon as IconData : Icons.more_vert,
-            size: iconSize,
             color: widget.tint,
+            size: iconSize,
           ),
           itemBuilder: (context) => menuItems,
           onSelected: (index) {
@@ -546,6 +660,7 @@ class _MacOSPopupMenuButton<T> extends StatelessWidget {
     this.height = 32,
   }) : icon = null,
        size = 44,
+       iconSize = null,
        child = null,
        triggerOnLongPress = false,
        onTap = null,
@@ -557,6 +672,7 @@ class _MacOSPopupMenuButton<T> extends StatelessWidget {
     required this.onSelected,
     this.tint,
     this.size = 44,
+    this.iconSize,
   }) : label = null,
        height = 32,
        child = null,
@@ -573,47 +689,23 @@ class _MacOSPopupMenuButton<T> extends StatelessWidget {
        icon = null,
        tint = null,
        height = 32,
-       size = 44;
+       size = 44,
+       iconSize = null;
 
   final String? label;
   final dynamic icon;
   final Widget? child;
   final double height;
   final double size;
+  final double? iconSize;
   final Color? tint;
   final bool triggerOnLongPress;
   final VoidCallback? onTap;
   final List<AdaptivePopupMenuEntry> items;
   final void Function(int index, AdaptivePopupMenuItem<T> entry) onSelected;
 
-  Future<void> _open(BuildContext context) async {
-    final box = context.findRenderObject() as RenderBox?;
-    if (box == null || !box.hasSize) return;
-    final origin = box.localToGlobal(Offset.zero);
-    final flutterView = View.of(context);
-    final viewSize = flutterView.physicalSize / flutterView.devicePixelRatio;
-    int? selected;
-    try {
-      selected = await MacOSControls.showMenu(
-        x: origin.dx,
-        y: origin.dy,
-        width: box.size.width,
-        height: box.size.height,
-        viewWidth: viewSize.width,
-        viewHeight: viewSize.height,
-        items: items,
-      );
-    } on MissingPluginException {
-      if (!context.mounted) return;
-      await AdaptivePopupMenuButton._showMenu<T>(context, label, items, onSelected);
-      return;
-    }
-    if (selected == null) return;
-    final entry = items[selected];
-    if (entry is AdaptivePopupMenuItem<T>) {
-      onSelected(selected, entry);
-    }
-  }
+  Future<void> _open(BuildContext context) =>
+      AdaptivePopupMenuButton._showMacOSMenu<T>(context, items, onSelected, title: label);
 
   @override
   Widget build(BuildContext context) {
@@ -628,7 +720,7 @@ class _MacOSPopupMenuButton<T> extends StatelessWidget {
           icon is IconData
               ? icon as IconData
               : sfSymbolToCupertinoIcon(icon is String ? icon : 'ellipsis.circle'),
-          size: size * 0.55,
+          size: iconSize ?? size * 0.55,
           color: tint,
         ),
       );

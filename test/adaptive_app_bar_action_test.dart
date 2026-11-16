@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:adaptive_platform_ui/adaptive_platform_ui.dart';
+import 'package:adaptive_platform_ui/src/widgets/ios26/ios26_glass_capsule.dart';
 
 void main() {
   group('AdaptiveAppBarAction', () {
@@ -233,6 +234,177 @@ void main() {
       final map = action.toNativeMap();
 
       expect(map['spacerAfter'], 2); // ToolbarSpacerType.flexible.index
+    });
+
+    group('menuItems', () {
+      AdaptiveAppBarAction menuAction({
+        String hideLabel = 'Hide',
+        void Function(int, AdaptivePopupMenuItem<dynamic>)? onSelected,
+      }) => AdaptiveAppBarAction(
+        iosSymbol: 'ellipsis',
+        menuItems: [
+          AdaptivePopupMenuItem(label: hideLabel, icon: 'eye.slash'),
+          const AdaptivePopupMenuDivider(),
+          const AdaptivePopupMenuItem(label: 'Delete', isDestructive: true),
+          const AdaptivePopupMenuItem(label: 'Later', enabled: false),
+        ],
+        onMenuItemSelected: onSelected ?? (_, _) {},
+      );
+
+      test('needs either onPressed or menuItems', () {
+        expect(
+          () => AdaptiveAppBarAction(iosSymbol: 'ellipsis'),
+          throwsAssertionError,
+        );
+      });
+
+      test('needs onMenuItemSelected with menuItems', () {
+        expect(
+          () => AdaptiveAppBarAction(
+            iosSymbol: 'ellipsis',
+            menuItems: const [AdaptivePopupMenuItem(label: 'Hide')],
+          ),
+          throwsAssertionError,
+        );
+      });
+
+      test('toNativeMap sends the entries, dividers included', () {
+        final map = menuAction().toNativeMap();
+
+        expect(map['menu'], [
+          {'title': 'Hide', 'icon': 'eye.slash'},
+          {'divider': true},
+          {'title': 'Delete', 'destructive': true},
+          {'title': 'Later', 'enabled': false},
+        ]);
+      });
+
+      test('toNativeMap has no menu for a plain action', () {
+        final map = AdaptiveAppBarAction(
+          iosSymbol: 'info.circle',
+          onPressed: () {},
+        ).toNativeMap();
+
+        expect(map.containsKey('menu'), isFalse);
+      });
+
+      test('a changed entry makes the action unequal', () {
+        expect(menuAction(), menuAction());
+        expect(menuAction().hashCode, menuAction().hashCode);
+        expect(menuAction(), isNot(menuAction(hideLabel: 'Show')));
+      });
+
+      test('selectMenuItem reports the entry and its index', () {
+        final selected = <(int, String)>[];
+        final action = menuAction(
+          onSelected: (index, item) => selected.add((index, item.label)),
+        );
+
+        action.selectMenuItem(2);
+        action.selectMenuItem(1); // divider
+        action.selectMenuItem(9); // out of range
+
+        expect(selected, [(2, 'Delete')]);
+      });
+    });
+  });
+
+  group('AdaptiveAppBarAction.badgeCount', () {
+    test('defaults to null', () {
+      final action = AdaptiveAppBarAction(iosSymbol: 'bell', onPressed: () {});
+
+      expect(action.badgeCount, isNull);
+    });
+
+    test('stores the given count', () {
+      final action = AdaptiveAppBarAction(
+        iosSymbol: 'bell',
+        badgeCount: 5,
+        onPressed: () {},
+      );
+
+      expect(action.badgeCount, 5);
+    });
+
+    test('is part of equality and hashCode', () {
+      AdaptiveAppBarAction bell(int? count) => AdaptiveAppBarAction(
+        iosSymbol: 'bell',
+        badgeCount: count,
+        onPressed: () {},
+      );
+
+      expect(bell(3), equals(bell(3)));
+      expect(bell(3).hashCode, equals(bell(3).hashCode));
+      expect(bell(3), isNot(equals(bell(4))));
+      expect(bell(3), isNot(equals(bell(null))));
+    });
+
+    test('is not sent through toNativeMap', () {
+      // The native toolbar does not draw action badges; only the glass
+      // capsule does, through GlassCapsuleItem.
+      final map = AdaptiveAppBarAction(
+        iosSymbol: 'bell',
+        badgeCount: 5,
+        onPressed: () {},
+      ).toNativeMap();
+
+      expect(map.containsKey('badge'), isFalse);
+      expect(map.containsKey('badgeCount'), isFalse);
+    });
+  });
+
+  group('GlassCapsuleItem.fromAction badge', () {
+    GlassCapsuleItem itemFor(int? count) => GlassCapsuleItem.fromAction(
+      AdaptiveAppBarAction(
+        iosSymbol: 'bell',
+        badgeCount: count,
+        onPressed: () {},
+      ),
+    );
+
+    test('passes the action badgeCount through', () {
+      expect(itemFor(7).badge, 7);
+      expect(itemFor(7).toNativeMap()['badge'], 7);
+    });
+
+    test('sends counts above 99 as is (native code shows 99+)', () {
+      expect(itemFor(150).toNativeMap()['badge'], 150);
+    });
+
+    test('sends no badge for null', () {
+      expect(itemFor(null).badge, isNull);
+      expect(itemFor(null).toNativeMap().containsKey('badge'), isFalse);
+    });
+
+    test('sends no badge for 0', () {
+      expect(itemFor(0).toNativeMap().containsKey('badge'), isFalse);
+    });
+  });
+
+  group('AdaptiveAppBarAction.wrapWithBadge', () {
+    testWidgets('draws an AdaptiveBadge on Flutter toolbars', (tester) async {
+      final badged = AdaptiveAppBarAction(
+        icon: Icons.notifications,
+        badgeCount: 7,
+        onPressed: () {},
+      );
+      final plain = AdaptiveAppBarAction(
+        icon: Icons.settings,
+        badgeCount: 0,
+        onPressed: () {},
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Row(
+            children: [
+              badged.wrapWithBadge(const Icon(Icons.notifications)),
+              plain.wrapWithBadge(const Icon(Icons.settings)),
+            ],
+          ),
+        ),
+      );
+      expect(find.byType(AdaptiveBadge), findsOneWidget);
+      expect(find.text('7'), findsOneWidget);
     });
   });
 }
