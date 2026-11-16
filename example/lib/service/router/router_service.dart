@@ -1,6 +1,7 @@
 import 'package:adaptive_platform_ui_example/main/main_page.dart';
 import 'package:adaptive_platform_ui_example/pages/home/home_page.dart';
 import 'package:adaptive_platform_ui_example/pages/info/info_page.dart';
+import 'package:adaptive_platform_ui_example/pages/profile/profile_page.dart';
 import 'package:adaptive_platform_ui_example/pages/search/search_page.dart';
 import 'package:adaptive_platform_ui_example/pages/demos/alert_dialog_demo_page.dart';
 import 'package:adaptive_platform_ui_example/pages/demos/badge_demo_page.dart';
@@ -35,7 +36,7 @@ import 'package:adaptive_platform_ui_example/pages/demos/navigation_page2.dart';
 import 'package:adaptive_platform_ui_example/pages/demos/navigation_page3.dart';
 import 'package:adaptive_platform_ui_example/utils/constants/route_constants.dart';
 import 'package:adaptive_platform_ui_example/utils/global_variables.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:go_router/go_router.dart';
 
 class RouterService {
@@ -297,6 +298,17 @@ class RouterService {
                   return const InfoPage();
                 },
                 routes: [],
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: <RouteBase>[
+              GoRoute(
+                name: routes.profile,
+                path: routes.profile,
+                builder: (BuildContext context, GoRouterState state) {
+                  return const ProfilePage();
+                },
               ),
             ],
           ),

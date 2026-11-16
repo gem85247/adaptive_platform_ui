@@ -1,4 +1,4 @@
-import 'package:flutter/cupertino.dart';
+import 'package:cupertino_ui/cupertino_ui.dart';
 
 /// Best-effort SF Symbol → CupertinoIcons map for Flutter-drawn fallbacks
 /// (CupertinoTabBar, icon buttons). Native iOS 26 / macOS NSMenu use the

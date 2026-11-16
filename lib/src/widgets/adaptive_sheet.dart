@@ -1,5 +1,5 @@
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
+import 'package:cupertino_ui/cupertino_ui.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../platform/platform_info.dart';
 
@@ -22,7 +22,8 @@ class AdaptiveSheet {
       return showCupertinoSheet<T>(
         context: context,
         useNestedNavigation: false,
-        pageBuilder: builder,
+        // What the route does with a plain builder; pageBuilder is deprecated.
+        scrollableBuilder: (context, _) => builder(context),
       );
     }
 

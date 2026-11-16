@@ -1,5 +1,5 @@
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
+import 'package:cupertino_ui/cupertino_ui.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:adaptive_platform_ui/adaptive_platform_ui.dart';
 import 'package:go_router/go_router.dart';
 
@@ -23,6 +23,17 @@ class _BadgeNavigationDemoPageState extends State<BadgeNavigationDemoPage> {
       appBar: AdaptiveAppBar(
         leading: PlatformInfo.isIOS26OrHigher() ? popButton(context) : null,
         title: 'Badge Navigation Demo',
+        actions: [
+          // On iPhone Duo the action joins the tabs in the vertical bar and
+          // shows its count there.
+          AdaptiveAppBarAction(
+            iosSymbol: 'bell',
+            icon: Icons.notifications_outlined,
+            label: 'Notifications',
+            badgeCount: _notificationsBadgeCount,
+            onPressed: () => setState(() => _notificationsBadgeCount = 0),
+          ),
+        ],
       ),
       body: _buildContent(),
       bottomNavigationBar: AdaptiveBottomNavigationBar(

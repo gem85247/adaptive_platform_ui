@@ -1,18 +1,24 @@
 name: adaptive_platform_ui
 description: "Adaptive platform-specific widgets for Flutter. Auto renders native iOS 26+ liquid glass designs, traditional Cupertino widgets for older iOS versions, Material Design for Android."
-version: 0.1.112
+version: 1.0.2
 homepage: https://github.com/berkaycatak/adaptive_platform_ui
 screenshots:
   - description: "iOS 26+ liquid glass designs"
     path: img/liquid-glass-demo.png
 
 environment:
-  sdk: ^3.9.2
-  flutter: ">=1.17.0"
+  sdk: ^3.13.0
+  flutter: ">=3.47.0"
 
 dependencies:
   flutter:
     sdk: flutter
+  # iPhone Duo (foldable) support: hinge, fold posture, reserved regions and
+  # iOS size classes bridged to Dart. Used to place the iOS 26 toolbar on the
+  # trailing edge on the Duo inner display.
+  foldable: ^1.0.3
+  cupertino_ui: ^1.1.6
+  material_ui: ^1.11.0
 
 dev_dependencies:
   flutter_test:

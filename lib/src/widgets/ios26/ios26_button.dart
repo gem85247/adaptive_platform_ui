@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:flutter/cupertino.dart';
+import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import '../../style/sf_symbol.dart';
@@ -408,7 +408,7 @@ class _IOS26ButtonState extends State<IOS26Button> {
             onPressed: widget.enabled ? widget.onPressed : null,
             color: buttonColor,
             borderRadius: widget.borderRadius ?? BorderRadius.circular(14.0),
-            minSize: widget.minSize?.height ?? _height,
+            minimumSize: Size.square(widget.minSize?.height ?? _height),
             padding:
                 widget.padding ?? const EdgeInsets.symmetric(horizontal: 16.0),
             child: buttonChild,
@@ -422,7 +422,7 @@ class _IOS26ButtonState extends State<IOS26Button> {
               widget.padding ?? const EdgeInsets.symmetric(horizontal: 16.0),
           // Child mode sizes the native button to child + padding; kill the
           // 44pt default minSize so the fallback occupies the same width.
-          minSize: widget.isChildMode ? 0.0 : null,
+          minimumSize: widget.isChildMode ? Size.zero : null,
           child: widget.isChildMode
               ? widget.child!
               : Text(

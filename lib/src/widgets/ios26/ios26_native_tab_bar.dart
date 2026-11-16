@@ -1,5 +1,6 @@
+import 'dart:async';
 import 'dart:io';
-import 'package:flutter/cupertino.dart';
+import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
@@ -62,6 +63,9 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
   List<String>? _lastNetworkIcons;
   List<String>? _lastSelectedNetworkIcons;
   List<int?>? _lastBadgeCounts;
+  List<String?>? _lastBadgeTexts;
+  List<int?>? _lastBadgeColors;
+  List<int?>? _lastBadgeTextColors;
   TabBarMinimizeBehavior? _lastMinimizeBehavior;
   bool? _lastHidden;
 
@@ -69,6 +73,7 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
   Key _viewKey = UniqueKey();
   bool _platformViewReady = false;
   int _remountAttempts = 0;
+  Timer? _watchdog;
   static const int _maxRemountAttempts = 2;
 
   bool get _isDark =>
@@ -87,18 +92,24 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
   /// the engine still holds it. UiKitView catches that and leaves a blank
   /// controller — remount once so the next registry id succeeds.
   void _armCreationWatchdog() {
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await Future<void>.delayed(const Duration(milliseconds: 150));
-      if (!mounted || _platformViewReady) return;
-      if (_remountAttempts >= _maxRemountAttempts) return;
-      _remountAttempts++;
-      setState(() {
-        _channel?.setMethodCallHandler(null);
-        _channel = null;
-        _viewKey = UniqueKey();
-      });
-      _armCreationWatchdog();
+    // A Timer, not Future.delayed, so dispose can cancel it.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _watchdog?.cancel();
+      _watchdog = Timer(const Duration(milliseconds: 150), _onWatchdog);
     });
+  }
+
+  void _onWatchdog() {
+    if (!mounted || _platformViewReady) return;
+    if (_remountAttempts >= _maxRemountAttempts) return;
+    _remountAttempts++;
+    setState(() {
+      _channel?.setMethodCallHandler(null);
+      _channel = null;
+      _viewKey = UniqueKey();
+    });
+    _armCreationWatchdog();
   }
 
   @override
@@ -117,6 +128,7 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
 
   @override
   void dispose() {
+    _watchdog?.cancel();
     _channel?.setMethodCallHandler(null);
     super.dispose();
   }
@@ -201,6 +213,22 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
       .map((e) => _extractNetworkUrl(e.selectedIcon ?? e.icon))
       .toList();
 
+  // Native badge styling: badge content + colors mapped to the
+  // native side (UITabBarItem.badgeValue / .badgeColor / badge text attrs).
+  List<String?> _mapBadgeTexts() =>
+      widget.destinations.map((e) => e.badgeText).toList();
+
+  List<int?> _mapBadgeColors() => widget.destinations
+      .map((e) => e.badgeColor != null ? _colorToARGB(e.badgeColor!) : null)
+      .toList();
+
+  List<int?> _mapBadgeTextColors() => widget.destinations
+      .map(
+        (e) =>
+            e.badgeTextColor != null ? _colorToARGB(e.badgeTextColor!) : null,
+      )
+      .toList();
+
   @override
   Widget build(BuildContext context) {
     if (!kIsWeb && Platform.isIOS) {
@@ -216,6 +244,9 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
 
       final searchFlags = widget.destinations.map((e) => e.isSearch).toList();
       final badgeCounts = widget.destinations.map((e) => e.badgeCount).toList();
+      final badgeTexts = _mapBadgeTexts();
+      final badgeColors = _mapBadgeColors();
+      final badgeTextColors = _mapBadgeTextColors();
       final spacerFlags = widget.destinations
           .map((e) => e.addSpacerAfter)
           .toList();
@@ -232,6 +263,9 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
         'selectedNetworkIcons': selectedNetworkIcons,
         'searchFlags': searchFlags,
         'badgeCounts': badgeCounts,
+        'badgeTexts': badgeTexts,
+        'badgeColors': badgeColors,
+        'badgeTextColors': badgeTextColors,
         'spacerFlags': spacerFlags,
         'selectedIndex': widget.selectedIndex,
         'isDark': _isDark,
@@ -414,6 +448,9 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
         'selectedNetworkIcons': selectedNetworkIcons,
         'searchFlags': searchFlags,
         'badgeCounts': badgeCounts,
+        'badgeTexts': _mapBadgeTexts(),
+        'badgeColors': _mapBadgeColors(),
+        'badgeTextColors': _mapBadgeTextColors(),
         'selectedIndex': widget.selectedIndex,
       });
       _lastLabels = labels;
@@ -428,15 +465,27 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
       _requestIntrinsicSize();
     }
 
-    // Badge counts update
+    // Badge update (count + text + colors). Re-push when any badge input changes.
     final currentBadgeCounts = widget.destinations
         .map((e) => e.badgeCount)
         .toList();
-    if (_lastBadgeCounts?.join('|') != currentBadgeCounts.join('|')) {
+    final currentBadgeTexts = _mapBadgeTexts();
+    final currentBadgeColors = _mapBadgeColors();
+    final currentBadgeTextColors = _mapBadgeTextColors();
+    if (_lastBadgeCounts?.join('|') != currentBadgeCounts.join('|') ||
+        _lastBadgeTexts?.join('|') != currentBadgeTexts.join('|') ||
+        _lastBadgeColors?.join('|') != currentBadgeColors.join('|') ||
+        _lastBadgeTextColors?.join('|') != currentBadgeTextColors.join('|')) {
       await ch.invokeMethod('setBadgeCounts', {
         'badgeCounts': currentBadgeCounts,
+        'badgeTexts': currentBadgeTexts,
+        'badgeColors': currentBadgeColors,
+        'badgeTextColors': currentBadgeTextColors,
       });
       _lastBadgeCounts = currentBadgeCounts;
+      _lastBadgeTexts = currentBadgeTexts;
+      _lastBadgeColors = currentBadgeColors;
+      _lastBadgeTextColors = currentBadgeTextColors;
     }
 
     // Minimize behavior update
@@ -482,6 +531,9 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
     _lastNetworkIcons = _mapNetworkIcons();
     _lastSelectedNetworkIcons = _mapSelectedNetworkIcons();
     _lastBadgeCounts = widget.destinations.map((e) => e.badgeCount).toList();
+    _lastBadgeTexts = _mapBadgeTexts();
+    _lastBadgeColors = _mapBadgeColors();
+    _lastBadgeTextColors = _mapBadgeTextColors();
   }
 
   Future<void> _syncHiddenIfNeeded() async {
@@ -533,6 +585,9 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
         'selectedNetworkIcons': selectedNetworkIcons,
         'searchFlags': searchFlags,
         'badgeCounts': badgeCounts,
+        'badgeTexts': _mapBadgeTexts(),
+        'badgeColors': _mapBadgeColors(),
+        'badgeTextColors': _mapBadgeTextColors(),
         'selectedIndex': widget.selectedIndex,
       });
 
@@ -550,7 +605,9 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
         await ch.invokeMethod('setStyle', style);
       }
 
-      await ch.invokeMethod('setSelectedIndex', {'index': widget.selectedIndex});
+      await ch.invokeMethod('setSelectedIndex', {
+        'index': widget.selectedIndex,
+      });
       _lastIndex = widget.selectedIndex;
       await _requestIntrinsicSize();
     } catch (_) {}

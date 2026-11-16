@@ -1,5 +1,5 @@
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
+import 'package:cupertino_ui/cupertino_ui.dart';
+import 'package:material_ui/material_ui.dart';
 import '../platform/platform_info.dart';
 import 'ios26/ios26_switch.dart';
 
@@ -73,8 +73,10 @@ class AdaptiveSwitch extends StatelessWidget {
       return CupertinoSwitch(
         value: value,
         onChanged: onChanged,
-        activeTrackColor:
-            activeColor ?? CupertinoTheme.of(context).primaryColor,
+        // Null keeps CupertinoSwitch's own system green, the colour every
+        // pre-26 iOS switch has; the theme's primary colour is the blue
+        // tint and is wrong here (#94).
+        activeTrackColor: activeColor,
         thumbColor: thumbColor,
       );
     }
