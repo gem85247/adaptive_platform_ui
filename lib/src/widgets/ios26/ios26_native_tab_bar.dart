@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
@@ -72,6 +73,7 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
   Key _viewKey = UniqueKey();
   bool _platformViewReady = false;
   int _remountAttempts = 0;
+  Timer? _watchdog;
   static const int _maxRemountAttempts = 2;
 
   bool get _isDark =>
@@ -90,18 +92,24 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
   /// the engine still holds it. UiKitView catches that and leaves a blank
   /// controller — remount once so the next registry id succeeds.
   void _armCreationWatchdog() {
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await Future<void>.delayed(const Duration(milliseconds: 150));
-      if (!mounted || _platformViewReady) return;
-      if (_remountAttempts >= _maxRemountAttempts) return;
-      _remountAttempts++;
-      setState(() {
-        _channel?.setMethodCallHandler(null);
-        _channel = null;
-        _viewKey = UniqueKey();
-      });
-      _armCreationWatchdog();
+    // A Timer, not Future.delayed, so dispose can cancel it.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _watchdog?.cancel();
+      _watchdog = Timer(const Duration(milliseconds: 150), _onWatchdog);
     });
+  }
+
+  void _onWatchdog() {
+    if (!mounted || _platformViewReady) return;
+    if (_remountAttempts >= _maxRemountAttempts) return;
+    _remountAttempts++;
+    setState(() {
+      _channel?.setMethodCallHandler(null);
+      _channel = null;
+      _viewKey = UniqueKey();
+    });
+    _armCreationWatchdog();
   }
 
   @override
@@ -120,6 +128,7 @@ class _IOS26NativeTabBarState extends State<IOS26NativeTabBar> {
 
   @override
   void dispose() {
+    _watchdog?.cancel();
     _channel?.setMethodCallHandler(null);
     super.dispose();
   }

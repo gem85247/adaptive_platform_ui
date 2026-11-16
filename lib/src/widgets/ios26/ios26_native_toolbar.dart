@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
@@ -69,6 +70,7 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
   Key _viewKey = UniqueKey();
   bool _platformViewReady = false;
   int _remountAttempts = 0;
+  Timer? _watchdog;
   static const int _maxRemountAttempts = 2;
 
   bool get _isDark =>
@@ -81,22 +83,29 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
   }
 
   void _armCreationWatchdog() {
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await Future<void>.delayed(const Duration(milliseconds: 150));
-      if (!mounted || _platformViewReady) return;
-      if (_remountAttempts >= _maxRemountAttempts) return;
-      _remountAttempts++;
-      setState(() {
-        _channel?.setMethodCallHandler(null);
-        _channel = null;
-        _viewKey = UniqueKey();
-      });
-      _armCreationWatchdog();
+    // A Timer, not Future.delayed, so dispose can cancel it.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _watchdog?.cancel();
+      _watchdog = Timer(const Duration(milliseconds: 150), _onWatchdog);
     });
+  }
+
+  void _onWatchdog() {
+    if (!mounted || _platformViewReady) return;
+    if (_remountAttempts >= _maxRemountAttempts) return;
+    _remountAttempts++;
+    setState(() {
+      _channel?.setMethodCallHandler(null);
+      _channel = null;
+      _viewKey = UniqueKey();
+    });
+    _armCreationWatchdog();
   }
 
   @override
   void dispose() {
+    _watchdog?.cancel();
     _channel?.setMethodCallHandler(null);
     super.dispose();
   }
