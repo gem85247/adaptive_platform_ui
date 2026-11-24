@@ -1,3 +1,7 @@
+import 'dart:ui' show Brightness;
+
+import 'package:flutter/painting.dart';
+
 /// One stop in the iOS 26 native toolbar readability fade.
 class NativeToolbarFadeStop {
   const NativeToolbarFadeStop({
@@ -11,11 +15,6 @@ class NativeToolbarFadeStop {
 
   /// Opacity of the scrim color at [location].
   final double opacity;
-
-  Map<String, dynamic> toNativeMap() => {
-        'location': location,
-        'opacity': opacity,
-      };
 
   @override
   bool operator ==(Object other) {
@@ -46,6 +45,9 @@ enum NativeToolbarFadeColor {
 /// The toolbar itself is clear liquid glass; this gradient sits behind it so
 /// title/actions stay readable over scrolling content. Defaults match the
 /// historical package behaviour.
+///
+/// The fade is drawn by Flutter, under the native bar, so toasts and other
+/// overlays paint on top of it, the part below the bar included.
 class NativeToolbarFade {
   const NativeToolbarFade({
     this.stops = standardStops,
@@ -96,11 +98,24 @@ class NativeToolbarFade {
   /// Extra points the fade extends below the toolbar bounds.
   final double extendBelow;
 
-  Map<String, dynamic> toNativeMap() => {
-        'stops': stops.map((s) => s.toNativeMap()).toList(),
-        'colorMode': color.name,
-        'extendBelow': extendBelow,
-      };
+  /// The fade from the top of the toolbar to [extendBelow] under it.
+  /// [platformBrightness] picks the scrim color for [NativeToolbarFadeColor.auto].
+  LinearGradient gradient(Brightness platformBrightness) {
+    final base = switch (color) {
+      NativeToolbarFadeColor.light => const Color(0xFFFFFFFF),
+      NativeToolbarFadeColor.dark => const Color(0xFF000000),
+      NativeToolbarFadeColor.auto =>
+        platformBrightness == Brightness.dark
+            ? const Color(0xFF000000)
+            : const Color(0xFFFFFFFF),
+    };
+    return LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      stops: [for (final stop in stops) stop.location],
+      colors: [for (final stop in stops) base.withValues(alpha: stop.opacity)],
+    );
+  }
 
   @override
   bool operator ==(Object other) {

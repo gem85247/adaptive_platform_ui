@@ -28,38 +28,18 @@ class iOS26ToolbarFactory: NSObject, FlutterPlatformViewFactory {
     }
 }
 
-// MARK: - Container View with Gradient
-class ToolbarContainerView: UIView {
-    var gradientLayer: CAGradientLayer?
-    var onTraitChange: (() -> Void)?
-    var extendBelow: CGFloat = 30
-
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        // Extend gradient below the container bounds for smooth fade
-        gradientLayer?.frame = CGRect(x: 0, y: 0, width: bounds.width, height: bounds.height + extendBelow)
-    }
-
-    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
-        super.traitCollectionDidChange(previousTraitCollection)
-        if traitCollection.hasDifferentColorAppearance(comparedTo: previousTraitCollection) {
-            onTraitChange?()
-        }
-    }
-}
-
 // MARK: - Platform View
+// The readability fade behind the bar is drawn by Flutter (IOS26NativeToolbar),
+// not here: anything this view paints outside its own bounds lands on top of
+// every Flutter overlay (toasts, menus), which can't be composited above it.
 class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
-    private var containerView: ToolbarContainerView
+    private var containerView: UIView
     private var navigationBar: UINavigationBar
     private var navigationItem: UINavigationItem
     private var channel: FlutterMethodChannel
 
     private var isDark: Bool = false
     private var perActionTintTags: Set<Int> = []
-    /// Optional fade overrides from Flutter. Nil → package defaults.
-    private var fadeStops: [(location: CGFloat, opacity: CGFloat)]?
-    private var fadeColorMode: String = "auto"
 
     init(
         frame: CGRect,
@@ -67,7 +47,7 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
         arguments args: Any?,
         binaryMessenger messenger: FlutterBinaryMessenger
     ) {
-        containerView = ToolbarContainerView(frame: frame)
+        containerView = UIView(frame: frame)
         navigationBar = UINavigationBar()
         navigationItem = UINavigationItem()
         channel = FlutterMethodChannel(
@@ -86,17 +66,6 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
             containerView.overrideUserInterfaceStyle = isDark ? .dark : .light
         }
 
-        // Fade config before creating the gradient layer so the first paint is correct.
-        if let params = args as? [String: Any] {
-            applyFadeConfig(params["fade"] as? [String: Any])
-        }
-
-        // The fixed toolbar host stacks one bar per page and fades them, so it
-        // draws a single gradient of its own behind them instead.
-        let showsGradient = (args as? [String: Any])?["showsGradient"] as? Bool ?? true
-        if showsGradient {
-            setupGradient()
-        }
         setupNavigationBar()
 
         if let params = args as? [String: Any] {
@@ -124,27 +93,12 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
         return containerView
     }
 
-    private func setupGradient() {
-        containerView.clipsToBounds = false
-
-        // Add gradient layer for better text readability
-        let gradientLayer = CAGradientLayer()
-        gradientLayer.startPoint = CGPoint(x: 0.5, y: 0.0)
-        gradientLayer.endPoint = CGPoint(x: 0.5, y: 1.0)
-        containerView.layer.insertSublayer(gradientLayer, at: 0)
-        containerView.gradientLayer = gradientLayer
-        containerView.onTraitChange = { [weak self] in
-            self?.updateGradientColors()
-        }
-        updateGradientColors()
-    }
-
     private func setupNavigationBar() {
         containerView.backgroundColor = .clear
         // Keeps glass buttons from turning blue after a menu closes
         containerView.tintColor = .label
 
-        // Make navigation bar transparent to show gradient behind
+        // Make navigation bar transparent to show the Flutter fade behind it
         navigationBar.translatesAutoresizingMaskIntoConstraints = false
         navigationBar.items = [navigationItem]
 
@@ -169,55 +123,6 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
             navigationBar.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
             navigationBar.bottomAnchor.constraint(equalTo: containerView.bottomAnchor)
         ])
-    }
-
-    private func updateGradientColors() {
-        let baseColor: UIColor
-        switch fadeColorMode {
-        case "light":
-            baseColor = .white
-        case "dark":
-            baseColor = .black
-        default:
-            let isDarkMode = containerView.traitCollection.userInterfaceStyle == .dark
-            baseColor = isDarkMode ? .black : .white
-        }
-
-        let stops = fadeStops ?? [
-            (0.0, 0.85),
-            (0.4, 0.6),
-            (0.7, 0.2),
-            (1.0, 0.0),
-        ]
-
-        containerView.gradientLayer?.colors = stops.map {
-            baseColor.withAlphaComponent($0.opacity).cgColor
-        }
-        containerView.gradientLayer?.locations = stops.map {
-            NSNumber(value: Double($0.location))
-        }
-        containerView.setNeedsLayout()
-    }
-
-    private func applyFadeConfig(_ fade: [String: Any]?) {
-        guard let fade else { return }
-
-        if let mode = fade["colorMode"] as? String {
-            fadeColorMode = mode
-        }
-        if let extend = fade["extendBelow"] as? NSNumber {
-            containerView.extendBelow = CGFloat(truncating: extend)
-        }
-        if let rawStops = fade["stops"] as? [[String: Any]], !rawStops.isEmpty {
-            var parsed: [(location: CGFloat, opacity: CGFloat)] = []
-            for stop in rawStops {
-                let location = CGFloat(truncating: stop["location"] as? NSNumber ?? 0)
-                let opacity = CGFloat(truncating: stop["opacity"] as? NSNumber ?? 0)
-                parsed.append((location, opacity))
-            }
-            fadeStops = parsed
-        }
-        updateGradientColors()
     }
 
     private func configureItems(_ params: [String: Any]) {
@@ -413,7 +318,6 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
                 if #available(iOS 13.0, *) {
                     containerView.overrideUserInterfaceStyle = dark ? .dark : .light
                 }
-                updateGradientColors()
             }
             result(nil)
         case "updateActions":
@@ -428,11 +332,6 @@ class iOS26ToolbarPlatformView: NSObject, FlutterPlatformView {
                         }
                     }
                 }
-            }
-            result(nil)
-        case "setFade":
-            if let args = call.arguments as? [String: Any] {
-                applyFadeConfig(args)
             }
             result(nil)
         case "setStyle":

@@ -268,13 +268,6 @@ class _Backdrop extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = MediaQuery.platformBrightnessOf(context) == Brightness.dark;
-    final base = switch (fade.color) {
-      NativeToolbarFadeColor.light => const Color(0xFFFFFFFF),
-      NativeToolbarFadeColor.dark => const Color(0xFF000000),
-      NativeToolbarFadeColor.auto =>
-        dark ? const Color(0xFF000000) : const Color(0xFFFFFFFF),
-    };
     return IgnorePointer(
       child: OverflowBox(
         alignment: Alignment.topCenter,
@@ -287,15 +280,7 @@ class _Backdrop extends StatelessWidget {
                 kHostedToolbarHeight +
                 fade.extendBelow,
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                stops: [for (final stop in fade.stops) stop.location],
-                colors: [
-                  for (final stop in fade.stops)
-                    base.withValues(alpha: stop.opacity),
-                ],
-              ),
+              gradient: fade.gradient(MediaQuery.platformBrightnessOf(context)),
             ),
           ),
         ),

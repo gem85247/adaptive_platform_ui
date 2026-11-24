@@ -50,7 +50,10 @@ class IOS26NativeToolbar extends StatefulWidget {
   final double height;
   final bool showNativeView;
 
-  /// Whether the native view draws the readability gradient behind the bar.
+  /// Whether to draw [toolbarFade] behind the bar. It is drawn here in
+  /// Flutter rather than by the native view: a platform view's pixels outside
+  /// its own bounds can't be composited under Flutter overlays, so a native
+  /// fade running on below the bar covered toasts reaching under it.
   /// The fixed toolbar host turns it off and draws one gradient of its own
   /// behind all page layers.
   final bool showsGradient;
@@ -64,7 +67,6 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
   bool? _lastIsDark;
   int? _lastTint;
   List<AdaptiveAppBarAction>? _lastActions;
-  NativeToolbarFade? _lastFade;
 
   /// Remount key for hot-restart [PlatformException(recreating_view)].
   Key _viewKey = UniqueKey();
@@ -190,16 +192,6 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
         // Ignore errors if platform view is not yet ready
       }
     }
-
-    // Sync toolbar fade
-    if (_lastFade != widget.toolbarFade) {
-      try {
-        await ch.invokeMethod('setFade', widget.toolbarFade.toNativeMap());
-        _lastFade = widget.toolbarFade;
-      } catch (e) {
-        // Ignore errors if platform view is not yet ready
-      }
-    }
   }
 
   bool _actionsEqual(
@@ -233,9 +225,7 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
       if (widget.actions != null && widget.actions!.isNotEmpty)
         'actions': widget.actions!.map((a) => a.toNativeMap()).toList(),
       'isDark': _isDark,
-      if (!widget.showsGradient) 'showsGradient': false,
       if (widget.tintColor != null) 'tint': _colorToARGB(widget.tintColor!),
-      'fade': widget.toolbarFade.toNativeMap(),
     };
 
     return AnimatedContainer(
@@ -243,7 +233,28 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
       duration: const Duration(milliseconds: 1000),
       curve: const IOSSpringCurve(),
       child: Stack(
+        // The fade runs on below the bar.
+        clipBehavior: Clip.none,
         children: [
+          if (widget.showsGradient)
+            Positioned(
+              left: 0,
+              right: 0,
+              top: 0,
+              bottom: -widget.toolbarFade.extendBelow,
+              child: IgnorePointer(
+                child: Opacity(
+                  opacity: widget.showNativeView ? 1.0 : 0.0,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: widget.toolbarFade.gradient(
+                        MediaQuery.platformBrightnessOf(context),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
           // Keep mounted when hidden — dispose/recreate races recreating_view.
           IgnorePointer(
             ignoring: !widget.showNativeView,
@@ -290,7 +301,6 @@ class _IOS26NativeToolbarState extends State<IOS26NativeToolbar> {
         ? _colorToARGB(widget.tintColor!)
         : null;
     _lastActions = widget.actions != null ? List.of(widget.actions!) : null;
-    _lastFade = widget.toolbarFade;
   }
 
   Future<dynamic> _handleMethodCall(MethodCall call) async {
